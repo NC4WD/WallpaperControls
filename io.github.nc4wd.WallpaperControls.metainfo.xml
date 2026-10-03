@@ -19,14 +19,15 @@
   <screenshots>
     <screenshot type="default">
       <caption>Preview a wallpaper before applying it</caption>
-      <image type="source">https://raw.githubusercontent.com/NC4WD/WallpaperControls/v0.1.0/assets/screenshots/main.png</image>
-    </screenshot>
-    <screenshot>
-      <caption>Choose image placement and a border color</caption>
-      <image type="source">https://raw.githubusercontent.com/NC4WD/WallpaperControls/v0.1.0/assets/screenshots/placement.png</image>
+      <image type="source">https://raw.githubusercontent.com/NC4WD/WallpaperControls/v0.1.1/assets/screenshots/main.png</image>
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.1.1" date="2026-10-03">
+      <description>
+        <p>The window adapts to the available screen height and keeps wallpaper controls visible on smaller displays.</p>
+      </description>
+    </release>
     <release version="0.1.0" date="2026-10-03">
       <description>
         <p>Initial public release with wallpaper placement, light and dark images, color selection, and per-monitor composition.</p>

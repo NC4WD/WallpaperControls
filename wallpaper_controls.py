@@ -22,7 +22,7 @@ from monitor_state import (PICTURE_KEYS, clean_old_wallpapers, cloned,
 
 
 APP_ID = "io.github.nc4wd.WallpaperControls"
-APP_VERSION = "0.1.0"
+APP_VERSION = "0.1.1"
 PROJECT_URL = "https://github.com/NC4WD/WallpaperControls"
 BACKGROUND_SCHEMA = "org.gnome.desktop.background"
 PLACEMENTS = (
@@ -62,10 +62,10 @@ def file_from_uri(uri):
 
 
 class WallpaperPreview(Gtk.DrawingArea):
-    def __init__(self):
+    def __init__(self, height):
         super().__init__()
-        self.set_content_width(720)
-        self.set_content_height(360)
+        self.set_content_width(400)
+        self.set_content_height(height)
         self.set_hexpand(True)
         self.set_vexpand(False)
         self.set_draw_func(self.draw)
@@ -201,7 +201,16 @@ class WallpaperPreview(Gtk.DrawingArea):
 class WallpaperWindow(Adw.ApplicationWindow):
     def __init__(self, app):
         super().__init__(application=app, title="Wallpaper Controls")
-        self.set_default_size(830, 750)
+        display = Gdk.Display.get_default()
+        monitor_model = display.get_monitors()
+        geometries = [monitor_model.get_item(index).get_geometry()
+                      for index in range(monitor_model.get_n_items())]
+        screen_width = min((geometry.width for geometry in geometries), default=1366)
+        screen_height = min((geometry.height for geometry in geometries), default=768)
+        window_width = max(320, min(830, screen_width - 48))
+        window_height = max(420, min(820, screen_height - 64))
+        self.set_default_size(window_width, window_height)
+        preview_height = max(160, min(240, round(window_height * 0.26)))
         self.settings = Gio.Settings.new(BACKGROUND_SCHEMA)
         self.selected_key = active_wallpaper_key()
         self.refreshing = False
@@ -210,8 +219,8 @@ class WallpaperWindow(Adw.ApplicationWindow):
         self.draft = self.saved.copy()
         self.config_saved = load_config(self.saved)
         self.config_draft = cloned(self.config_saved)
-        self.monitor_model = Gdk.Display.get_default().get_monitors()
-        self.monitor_specs = monitors_from_display(Gdk.Display.get_default())
+        self.monitor_model = monitor_model
+        self.monitor_specs = monitors_from_display(display)
         self.layout_dirty = (self.config_saved["enabled"] and
                              layout_signature(self.monitor_specs) != self.config_saved["layout"])
         self.placement_mode_is_multi = False
@@ -226,6 +235,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
         header.pack_start(self.revert_button)
         self.apply_button = Gtk.Button(label="Apply")
         self.apply_button.add_css_class("suggested-action")
+        self.apply_button.set_tooltip_text("Apply the previewed changes to your desktop")
         self.apply_button.connect("clicked", self.on_apply)
         header.pack_end(self.apply_button)
         about_button = Gtk.Button.new_from_icon_name("help-about-symbolic")
@@ -238,19 +248,20 @@ class WallpaperWindow(Adw.ApplicationWindow):
 
         scroll = Gtk.ScrolledWindow()
         scroll.set_policy(Gtk.PolicyType.NEVER, Gtk.PolicyType.AUTOMATIC)
+        scroll.set_overlay_scrolling(False)
         toolbar.set_content(scroll)
         clamp = Adw.Clamp()
         clamp.set_maximum_size(760)
         clamp.set_tightening_threshold(620)
         scroll.set_child(clamp)
-        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=20)
-        content.set_margin_top(22)
-        content.set_margin_bottom(30)
+        content = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=12)
+        content.set_margin_top(14)
+        content.set_margin_bottom(18)
         content.set_margin_start(18)
         content.set_margin_end(18)
         clamp.set_child(content)
 
-        self.preview = WallpaperPreview()
+        self.preview = WallpaperPreview(preview_height)
         preview_frame = Gtk.Frame()
         preview_frame.add_css_class("card")
         preview_frame.set_child(self.preview)
@@ -259,6 +270,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
         self.hint.set_halign(Gtk.Align.START)
         self.hint.set_wrap(True)
         self.hint.add_css_class("dim-label")
+        self.hint.set_visible(False)
         content.append(self.hint)
 
         image_group = Adw.PreferencesGroup(title="Wallpaper")
@@ -411,14 +423,15 @@ class WallpaperWindow(Adw.ApplicationWindow):
                                          placement, self.draft["primary-color"],
                                          scale=scale, allow_missing=True)
                 self.preview.update_composite(image, self.monitor_specs)
-                self.hint.set_text("Preview your monitor layout, then press Apply.")
+                self.hint.set_visible(False)
             except (OSError, ValueError, GLib.Error) as error:
                 self.preview.update("", "zoom", color)
                 self.preview.placeholder_label = "Preview unavailable"
                 self.hint.set_text(str(error))
+                self.hint.set_visible(True)
         else:
             self.preview.update(uri, placement, color)
-            self.hint.set_text("Preview your changes, then press Apply.")
+            self.hint.set_visible(False)
         changed = self.has_changes()
         self.apply_button.set_sensitive(changed)
         self.revert_button.set_sensitive(changed)
@@ -632,6 +645,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
         except (OSError, ValueError, GLib.Error, MemoryError) as error:
             self.settings.revert()
             self.hint.set_text(str(error))
+            self.hint.set_visible(True)
             return
         finally:
             self.applying = False

@@ -6,8 +6,6 @@ settings panels and shows a preview before anything changes.
 
 ![Wallpaper Controls preview and Apply button](assets/screenshots/main.png)
 
-![Placement and border controls](assets/screenshots/placement.png)
-
 ## Features
 
 - Fill, Fit, Stretch, Center, Tile, and Span Displays

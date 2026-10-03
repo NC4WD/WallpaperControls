@@ -13,12 +13,11 @@ name must remain `WallpaperControls` to match the application ID
 3. Test `./install.sh`, the app window, the Files action, and `./uninstall.sh`
    on a clean GNOME user account. Test the per-monitor result with two physical
    displays, including a Light/Dark switch and a changed display layout.
-4. Create a public GitHub repository named `WallpaperControls` under `NC4WD`,
-   put this folder at its root, and push the reviewed source.
-5. Review the real app screenshots in `assets/screenshots/` and the AppStream
-   metadata. The screenshot URLs are pinned to `v0.1.0`.
-6. Tag the reviewed version `v0.1.0` and publish a GitHub release. Make sure
-   both screenshot URLs in AppStream resolve from that tag.
+4. Push the reviewed source to the public GitHub repository.
+5. Review the real app screenshot in `assets/screenshots/` and update its
+   AppStream URL to point to the release tag.
+6. Tag the reviewed version and publish a GitHub release. Make sure the
+   screenshot URL in AppStream resolves from that tag.
 
 ## Flathub status
 

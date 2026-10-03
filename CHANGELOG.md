@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.1.1 — 2026-10-03
+
+- Sized the window for the smallest connected display and made the preview more compact.
+- Kept the main controls visible on a 768-pixel-tall screen, with a visible scrollbar when more rows are needed.
+
 ## 0.1.0 — 2026-10-03
 
 - Added a GTK4/libadwaita window with wallpaper preview and Apply/Revert controls.
