@@ -1,0 +1,32 @@
+name: Checks
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  test:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install system dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y appstream desktop-file-utils gir1.2-adw-1 \
+            gir1.2-gdkpixbuf-2.0 gir1.2-gtk-4.0 python3-gi python3-pil python3-pytest
+      - name: Check source and metadata
+        run: |
+          sh -n install.sh uninstall.sh run.sh
+          /usr/bin/python3 -m py_compile wallpaper_controls.py monitor_wallpaper.py monitor_state.py
+          /usr/bin/python3 -m pytest -q
+          appstreamcli validate --no-net io.github.nc4wd.WallpaperControls.metainfo.xml
+      - name: Check clean user install
+        run: |
+          export HOME="$(mktemp -d)"
+          export XDG_DATA_HOME="$HOME/.local/share"
+          ./install.sh
+          desktop-file-validate "$XDG_DATA_HOME/applications/io.github.nc4wd.WallpaperControls.desktop" \
+            "$XDG_DATA_HOME/applications/io.github.nc4wd.WallpaperControls.SetWallpaper.desktop"
+          "$HOME/.local/bin/wallpaper-controls" --version
+          ./uninstall.sh
+          test ! -e "$HOME/.local/bin/wallpaper-controls"

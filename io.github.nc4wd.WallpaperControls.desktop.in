@@ -1,0 +1,10 @@
+[Desktop Entry]
+Type=Application
+Name=Wallpaper Controls
+Comment=Choose images and placement for your GNOME wallpaper
+Exec=@EXEC@
+Icon=io.github.nc4wd.WallpaperControls
+Terminal=false
+Categories=Settings;DesktopSettings;GTK;
+Keywords=wallpaper;background;monitor;desktop;picture;
+StartupNotify=true

@@ -1,0 +1,37 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<component type="desktop-application">
+  <id>io.github.nc4wd.WallpaperControls</id>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-3.0-or-later</project_license>
+  <name>Wallpaper Controls</name>
+  <summary>Choose how wallpapers appear on GNOME desktops</summary>
+  <description>
+    <p>Wallpaper Controls brings image placement choices back to a simple desktop window. Preview Fill, Fit, Stretch, Center, Tile, and Span Displays before applying a wallpaper.</p>
+    <p>Choose separate images for light and dark appearance, set a border color, and give each connected monitor its own image. The app combines monitor images into one wallpaper that GNOME can display across the desktop.</p>
+    <p>Edits remain in the preview until you press Apply. Revert discards pending changes.</p>
+  </description>
+  <developer id="io.github.nc4wd">
+    <name>NC4WD</name>
+  </developer>
+  <launchable type="desktop-id">io.github.nc4wd.WallpaperControls.desktop</launchable>
+  <url type="homepage">https://github.com/NC4WD/WallpaperControls</url>
+  <url type="bugtracker">https://github.com/NC4WD/WallpaperControls/issues</url>
+  <screenshots>
+    <screenshot type="default">
+      <caption>Preview a wallpaper before applying it</caption>
+      <image type="source">https://raw.githubusercontent.com/NC4WD/WallpaperControls/v0.1.0/assets/screenshots/main.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Choose image placement and a border color</caption>
+      <image type="source">https://raw.githubusercontent.com/NC4WD/WallpaperControls/v0.1.0/assets/screenshots/placement.png</image>
+    </screenshot>
+  </screenshots>
+  <releases>
+    <release version="0.1.0" date="2026-10-03">
+      <description>
+        <p>Initial public release with wallpaper placement, light and dark images, color selection, and per-monitor composition.</p>
+      </description>
+    </release>
+  </releases>
+  <content_rating type="oars-1.1" />
+</component>

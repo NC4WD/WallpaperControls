@@ -1,0 +1,9 @@
+[Desktop Entry]
+Type=Application
+Name=Set as Wallpaper
+Comment=Preview this image, then apply it for light and dark appearances
+Exec=@EXEC@ --set-wallpaper %f
+Icon=io.github.nc4wd.WallpaperControls
+Terminal=false
+NoDisplay=true
+MimeType=image/jpeg;image/png;image/webp;image/bmp;image/gif;image/tiff;image/svg+xml;
