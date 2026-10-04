@@ -27,6 +27,10 @@ jobs:
           ./install.sh
           desktop-file-validate "$XDG_DATA_HOME/applications/io.github.nc4wd.WallpaperControls.desktop" \
             "$XDG_DATA_HOME/applications/io.github.nc4wd.WallpaperControls.SetWallpaper.desktop"
+          icon="$XDG_DATA_HOME/icons/hicolor/256x256/apps/io.github.nc4wd.WallpaperControls.png"
+          test -f "$icon"
+          test "$(sed -n 's/^Icon=//p' "$XDG_DATA_HOME/applications/io.github.nc4wd.WallpaperControls.desktop")" = "$icon"
           "$HOME/.local/bin/wallpaper-controls" --version
           ./uninstall.sh
           test ! -e "$HOME/.local/bin/wallpaper-controls"
+          test ! -e "$icon"

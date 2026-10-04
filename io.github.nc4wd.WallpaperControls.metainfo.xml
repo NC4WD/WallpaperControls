@@ -19,10 +19,15 @@
   <screenshots>
     <screenshot type="default">
       <caption>Preview a wallpaper before applying it</caption>
-      <image type="source">https://raw.githubusercontent.com/NC4WD/WallpaperControls/v0.1.1/assets/screenshots/main.png</image>
+      <image type="source">https://raw.githubusercontent.com/NC4WD/WallpaperControls/v0.1.2/assets/screenshots/main.png</image>
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.1.2" date="2026-10-03">
+      <description>
+        <p>Show the app's own icon in the Ubuntu app launcher.</p>
+      </description>
+    </release>
     <release version="0.1.1" date="2026-10-03">
       <description>
         <p>The window adapts to the available screen height and keeps wallpaper controls visible on smaller displays.</p>

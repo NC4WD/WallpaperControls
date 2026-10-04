@@ -17,6 +17,7 @@ paths = [
     desktop_dir / f"{app_id}.desktop",
     desktop_dir / f"{app_id}.SetWallpaper.desktop",
     data / "icons/hicolor/scalable/apps" / f"{app_id}.svg",
+    data / "icons/hicolor/256x256/apps" / f"{app_id}.png",
     data / "metainfo" / f"{app_id}.metainfo.xml",
     *(app / filename for filename in (
         "wallpaper_controls.py", "monitor_wallpaper.py", "monitor_state.py", "LICENSE")),

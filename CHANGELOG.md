@@ -1,5 +1,9 @@
 # Changelog
 
+## 0.1.2 — 2026-10-03
+
+- Fixed the local app launcher showing a generic gear by installing a PNG icon and pointing both desktop entries directly to it.
+
 ## 0.1.1 — 2026-10-03
 
 - Sized the window for the smallest connected display and made the preview more compact.

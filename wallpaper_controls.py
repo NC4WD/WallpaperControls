@@ -22,7 +22,7 @@ from monitor_state import (PICTURE_KEYS, clean_old_wallpapers, cloned,
 
 
 APP_ID = "io.github.nc4wd.WallpaperControls"
-APP_VERSION = "0.1.1"
+APP_VERSION = "0.1.2"
 PROJECT_URL = "https://github.com/NC4WD/WallpaperControls"
 BACKGROUND_SCHEMA = "org.gnome.desktop.background"
 PLACEMENTS = (

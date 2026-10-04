@@ -30,14 +30,17 @@ app = data / "wallpaper-controls"
 bin_dir = home / ".local/bin"
 desktop_dir = data / "applications"
 icon_dir = data / "icons/hicolor/scalable/apps"
+png_icon_dir = data / "icons/hicolor/256x256/apps"
 metainfo_dir = data / "metainfo"
-for directory in (app, bin_dir, desktop_dir, icon_dir, metainfo_dir):
+for directory in (app, bin_dir, desktop_dir, icon_dir, png_icon_dir, metainfo_dir):
     directory.mkdir(parents=True, exist_ok=True)
 
 app_id = "io.github.nc4wd.WallpaperControls"
 for filename in ("wallpaper_controls.py", "monitor_wallpaper.py", "monitor_state.py", "LICENSE"):
     shutil.copy2(source / filename, app / filename)
 shutil.copy2(source / f"{app_id}.svg", icon_dir / f"{app_id}.svg")
+png_icon = png_icon_dir / f"{app_id}.png"
+shutil.copy2(source / f"{app_id}.png", png_icon)
 shutil.copy2(source / f"{app_id}.metainfo.xml", metainfo_dir / f"{app_id}.metainfo.xml")
 
 launcher = bin_dir / "wallpaper-controls"
@@ -57,7 +60,9 @@ def desktop_quote(path):
 for filename in (f"{app_id}.desktop", f"{app_id}.SetWallpaper.desktop"):
     template = (source / f"{filename}.in").read_text(encoding="utf-8")
     (desktop_dir / filename).write_text(
-        template.replace("@EXEC@", desktop_quote(launcher)), encoding="utf-8")
+        template.replace("@EXEC@", desktop_quote(launcher))
+                .replace(f"Icon={app_id}\n", f"Icon={png_icon}\n"),
+        encoding="utf-8")
 
 # Remove launcher entries from the pre-release application ID.
 for path in (
