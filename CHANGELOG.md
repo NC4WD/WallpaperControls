@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.4 — 2026-10-11
+
+- Added Small, Medium, and Large border sizes so the background color remains visible even when an image matches the screen shape.
+- Applied visible borders consistently to single-image and per-monitor wallpapers.
+- Preserved original wallpaper choices while generating bordered wallpapers.
+
 ## 0.1.3 — 2026-10-11
 
 - Show the selected background color as a hex value.

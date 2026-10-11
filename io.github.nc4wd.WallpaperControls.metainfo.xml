@@ -7,7 +7,7 @@
   <summary>Choose how wallpapers appear on GNOME desktops</summary>
   <description>
     <p>Wallpaper Controls brings image placement choices back to a simple desktop window. Preview Fill, Fit, Stretch, Center, Tile, and Span Displays before applying a wallpaper.</p>
-    <p>Choose separate images for light and dark appearance, set a border color, and give each connected monitor its own image. The app combines monitor images into one wallpaper that GNOME can display across the desktop.</p>
+    <p>Choose separate images for light and dark appearance, set a background color and visible border size, and give each connected monitor its own image. The app combines monitor images into one wallpaper that GNOME can display across the desktop.</p>
     <p>Edits remain in the preview until you press Apply. Revert discards pending changes.</p>
   </description>
   <developer id="io.github.nc4wd">
@@ -19,10 +19,15 @@
   <screenshots>
     <screenshot type="default">
       <caption>Preview a wallpaper before applying it</caption>
-      <image type="source">https://raw.githubusercontent.com/NC4WD/WallpaperControls/v0.1.3/assets/screenshots/main.png</image>
+      <image type="source">https://raw.githubusercontent.com/NC4WD/WallpaperControls/v0.1.4/assets/screenshots/main.png</image>
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.1.4" date="2026-10-11">
+      <description>
+        <p>Add adjustable visible borders so the selected background color can always appear around the wallpaper.</p>
+      </description>
+    </release>
     <release version="0.1.3" date="2026-10-11">
       <description>
         <p>Clarify the background color control and show when the wallpaper image covers it.</p>

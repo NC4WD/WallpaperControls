@@ -32,6 +32,7 @@ def default_config(settings_values):
         "single": {key: settings_values[key] for key in (*PICTURE_KEYS, "picture-options")},
         "images": {key: {} for key in PICTURE_KEYS},
         "placement": "zoom",
+        "border": 0.0,
         "generated": {key: "" for key in PICTURE_KEYS},
         "layout": "",
     }
@@ -52,6 +53,9 @@ def load_config(settings_values):
                     }
         if loaded.get("placement") in ("zoom", "scaled", "stretched", "centered", "wallpaper"):
             config["placement"] = loaded["placement"]
+        border = loaded.get("border", 0.0)
+        if isinstance(border, (int, float)) and 0 <= border <= 0.25:
+            config["border"] = float(border)
         if isinstance(loaded.get("single"), dict):
             for key in config["single"]:
                 if isinstance(loaded["single"].get(key), str):
@@ -62,10 +66,13 @@ def load_config(settings_values):
                     config["generated"][key] = loaded["generated"][key]
         if isinstance(loaded.get("layout"), str):
             config["layout"] = loaded["layout"]
-        config["enabled"] = bool(loaded.get("enabled")) and all(
+        requested_multi = bool(loaded.get("enabled"))
+        generated_active = (requested_multi or config["border"] > 0) and all(
             settings_values[key] == config["generated"][key]
             for key in PICTURE_KEYS) and settings_values["picture-options"] == "spanned"
-        if not config["enabled"]:
+        config["enabled"] = requested_multi and generated_active
+        if not generated_active:
+            config["border"] = 0.0
             config["single"] = {key: settings_values[key] for key in config["single"]}
     except (OSError, ValueError, TypeError, AttributeError):
         pass
@@ -92,7 +99,8 @@ def generate_wallpapers(monitors, config, color):
     generated = {}
     for key, name in (("picture-uri", "light"), ("picture-uri-dark", "dark")):
         image = render_composite(monitors, config["images"][key],
-                                 config["placement"], color)
+                                 config["placement"], color,
+                                 border=config.get("border", 0.0))
         filename = f"{name}-{uuid4().hex}.png"
         path = output_dir / filename
         with tempfile.NamedTemporaryFile(dir=output_dir, prefix=f".{name}-",

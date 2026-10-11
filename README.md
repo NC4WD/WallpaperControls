@@ -10,7 +10,7 @@ settings panels and shows a preview before anything changes.
 
 - Fill, Fit, Stretch, Center, Tile, and Span Displays
 - Separate wallpaper images for Light and Dark appearance
-- A border color for fitted, centered, and tiled images
+- A background color and adjustable border size, including for images that match the screen shape
 - A different image on each connected monitor, composed into a single spanned wallpaper
 - **Apply** and **Revert** controls so edits do not immediately change your desktop
 - **Open With → Set as Wallpaper** for images in Files
@@ -40,8 +40,9 @@ Choose **Light** or **Dark**, select an image, and adjust its placement. The
 preview updates while GNOME's wallpaper stays unchanged. Press **Apply** when
 you are happy with the result, or **Revert** to discard the edits. **Copy this
 image to Dark/Light** copies the selected image to the other appearance when
-you apply. The background color fills space left around fitted or centered
-images; it is hidden when the image already covers the screen.
+you apply. The background color fills space left around the image. Choose a
+Small, Medium, or Large **Border size** when you want the color to remain
+visible even if the image already matches or fills the screen.
 
 For separate images on each monitor, turn on **Different image on each
 monitor** and choose an image in each connected monitor row. Repeat for the

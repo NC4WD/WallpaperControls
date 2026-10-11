@@ -133,21 +133,32 @@ def _place_image(canvas, source, rectangle, placement, scale):
 
 
 def render_composite(monitors, image_uris, placement, color, scale=None,
-                     allow_missing=False):
+                     allow_missing=False, border=0.0):
     """Return a Pillow RGBA image matching the joined display layout."""
     check_layout(monitors)
     left, top, logical_width, logical_height = bounds(monitors)
-    if placement not in PER_MONITOR_PLACEMENTS:
+    if placement not in (*PER_MONITOR_PLACEMENTS, "spanned"):
         raise ValueError("Choose a placement for the images on each monitor.")
     if scale is None:
         scale = max(m.scale for m in monitors)
     if not math.isfinite(scale) or scale <= 0:
         raise ValueError("Invalid display scale.")
+    if not isinstance(border, (int, float)) or not math.isfinite(border) or not 0 <= border <= 0.25:
+        raise ValueError("Invalid wallpaper border size.")
     width = max(1, round(logical_width * scale))
     height = max(1, round(logical_height * scale))
     if width * height > MAX_PIXELS:
         raise ValueError("The combined monitor layout is too large to render safely.")
     canvas = Image.new("RGBA", (width, height), (*_color_rgb(color), 255))
+    if placement == "spanned":
+        uri = image_uris.get(monitors[0].connector)
+        if not uri:
+            raise ValueError("Choose an image before applying the wallpaper.")
+        inset = round(min(width, height) * border)
+        rectangle = (inset, inset, max(1, width - inset * 2),
+                     max(1, height - inset * 2))
+        _place_image(canvas, _load_image(uri), rectangle, "zoom", scale)
+        return canvas
     for monitor in monitors:
         uri = image_uris.get(monitor.connector)
         if not uri:
@@ -158,6 +169,11 @@ def render_composite(monitors, image_uris, placement, color, scale=None,
         y = round((monitor.y - top) * scale)
         right = round((monitor.x + monitor.width - left) * scale)
         bottom = round((monitor.y + monitor.height - top) * scale)
-        rectangle = (x, y, right - x, bottom - y)
+        monitor_width = right - x
+        monitor_height = bottom - y
+        inset = round(min(monitor_width, monitor_height) * border)
+        rectangle = (x + inset, y + inset,
+                     max(1, monitor_width - inset * 2),
+                     max(1, monitor_height - inset * 2))
         _place_image(canvas, _load_image(uri), rectangle, placement, scale)
     return canvas

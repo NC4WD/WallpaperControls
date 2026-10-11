@@ -22,7 +22,7 @@ from monitor_state import (PICTURE_KEYS, clean_old_wallpapers, cloned,
 
 
 APP_ID = "io.github.nc4wd.WallpaperControls"
-APP_VERSION = "0.1.3"
+APP_VERSION = "0.1.4"
 PROJECT_URL = "https://github.com/NC4WD/WallpaperControls"
 BACKGROUND_SCHEMA = "org.gnome.desktop.background"
 PLACEMENTS = (
@@ -34,6 +34,12 @@ PLACEMENTS = (
     ("Span Displays", "spanned"),
 )
 PLACEMENT_KEYS = [value for _, value in PLACEMENTS]
+BORDERS = (
+    ("None", 0.0),
+    ("Small", 0.03),
+    ("Medium", 0.06),
+    ("Large", 0.10),
+)
 EDITABLE_KEYS = (
     "picture-uri", "picture-uri-dark", "picture-options",
     "primary-color", "secondary-color", "color-shading-type",
@@ -76,15 +82,17 @@ class WallpaperPreview(Gtk.DrawingArea):
         self.image_height = 0
         self.placeholder_label = "Choose an image to preview"
         self.placement = "zoom"
+        self.border = 0.0
         self.color = Gdk.RGBA()
         self.color.parse("#000000")
 
-    def update(self, uri, placement, color):
+    def update(self, uri, placement, color, border=0.0):
         self.pixbuf = None
         self.composite_pixbuf = None
         self.composite_monitors = []
         self.image_width = self.image_height = 0
         self.placement = placement
+        self.border = border
         self.color = color
         self.placeholder_label = "Preview unavailable" if uri else "Choose an image to preview"
         path = file_from_uri(uri)
@@ -162,16 +170,24 @@ class WallpaperPreview(Gtk.DrawingArea):
         elif self.pixbuf and self.image_width and self.image_height:
             iw, ih = self.image_width, self.image_height
             vw, vh = 1920, 1080
-            sx, sy = frame_width / vw, frame_height / vh
+            inset = min(frame_width, frame_height) * self.border
+            image_x = x0 + inset
+            image_y = y0 + inset
+            image_width = max(1, frame_width - inset * 2)
+            image_height = max(1, frame_height - inset * 2)
+            sx, sy = image_width / vw, image_height / vh
+            cr.save()
+            cr.rectangle(image_x, image_y, image_width, image_height)
+            cr.clip()
             if self.placement == "stretched":
-                self.paint_image(cr, x0, y0, frame_width, frame_height)
+                self.paint_image(cr, image_x, image_y, image_width, image_height)
             elif self.placement == "wallpaper":
                 tw, th = iw * sx, ih * sy
                 # Tiny tiles can be drawn too densely to distinguish here.
                 tw, th = max(tw, 8), max(th, 8)
-                for row in range(min(math.ceil(frame_height / th), 100)):
-                    for col in range(min(math.ceil(frame_width / tw), 100)):
-                        self.paint_image(cr, x0 + col * tw, y0 + row * th, tw, th)
+                for row in range(min(math.ceil(image_height / th), 100)):
+                    for col in range(min(math.ceil(image_width / tw), 100)):
+                        self.paint_image(cr, image_x + col * tw, image_y + row * th, tw, th)
             else:
                 if self.placement == "centered":
                     scale = 1.0
@@ -180,8 +196,9 @@ class WallpaperPreview(Gtk.DrawingArea):
                 else:  # zoom and spanned are both cropped to fill this frame.
                     scale = max(vw / iw, vh / ih)
                 dw, dh = iw * scale * sx, ih * scale * sy
-                self.paint_image(cr, x0 + (frame_width - dw) / 2,
-                                 y0 + (frame_height - dh) / 2, dw, dh)
+                self.paint_image(cr, image_x + (image_width - dw) / 2,
+                                 image_y + (image_height - dh) / 2, dw, dh)
+            cr.restore()
         else:
             cr.set_source_rgba(1, 1, 1, 0.8 if self.color.red < 0.5 else 0.7)
             cr.select_font_face("Sans", 0, 0)
@@ -221,7 +238,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
         self.config_draft = cloned(self.config_saved)
         self.monitor_model = monitor_model
         self.monitor_specs = monitors_from_display(display)
-        self.layout_dirty = (self.config_saved["enabled"] and
+        self.layout_dirty = (self.uses_generated_wallpaper(self.config_saved) and
                              layout_signature(self.monitor_specs) != self.config_saved["layout"])
         self.placement_mode_is_multi = False
         self._monitor_signal_handles = []
@@ -340,6 +357,16 @@ class WallpaperWindow(Adw.ApplicationWindow):
         self.color_row.set_activatable_widget(self.color_button)
         placement_group.add(self.color_row)
 
+        self.border_row = Adw.ActionRow(
+            title="Border size",
+            subtitle="Leaves space around each image for the background color")
+        self.border_dropdown = Gtk.DropDown.new_from_strings([label for label, _ in BORDERS])
+        self.border_dropdown.set_valign(Gtk.Align.CENTER)
+        self.border_dropdown.connect("notify::selected", self.on_border_changed)
+        self.border_row.add_suffix(self.border_dropdown)
+        self.border_row.set_activatable_widget(self.border_dropdown)
+        placement_group.add(self.border_row)
+
         self.settings.connect("changed", self.on_settings_changed)
         self.monitor_model.connect("items-changed", self.on_monitors_changed)
         self.connect_monitor_signals()
@@ -351,6 +378,10 @@ class WallpaperWindow(Adw.ApplicationWindow):
     def has_changes(self):
         return (self.draft != self.saved or self.config_draft != self.config_saved
                 or self.layout_dirty)
+
+    @staticmethod
+    def uses_generated_wallpaper(config):
+        return config["enabled"] or config.get("border", 0.0) > 0
 
     def rebuild_monitor_rows(self):
         for row in self.monitor_rows:
@@ -380,7 +411,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
         self.monitor_specs = monitors_from_display(Gdk.Display.get_default())
         self.connect_monitor_signals()
         self.rebuild_monitor_rows()
-        self.layout_dirty = (self.config_draft["enabled"] and
+        self.layout_dirty = (self.uses_generated_wallpaper(self.config_draft) and
                              layout_signature(self.monitor_specs) != self.config_saved["layout"])
         self.render_draft()
 
@@ -390,7 +421,9 @@ class WallpaperWindow(Adw.ApplicationWindow):
         self.monitor_switch.set_active(multi)
         self.image_row.set_visible(not multi)
         self.monitors_group.set_visible(multi)
-        uri = self.draft[self.selected_key]
+        border = self.config_draft.get("border", 0.0)
+        uri = (self.config_draft["single"][self.selected_key]
+               if not multi and border > 0 else self.draft[self.selected_key])
         path = file_from_uri(uri)
         self.image_row.set_subtitle(Path(path).name if path else
                                     ("No image selected" if not uri else uri))
@@ -408,16 +441,24 @@ class WallpaperWindow(Adw.ApplicationWindow):
             options = PLACEMENTS[:-1] if multi else PLACEMENTS
             self.placement_dropdown.set_model(Gtk.StringList.new([label for label, _ in options]))
             self.placement_mode_is_multi = multi
-        placement = self.config_draft["placement"] if multi else self.draft["picture-options"]
+        placement = (self.config_draft["placement"] if multi else
+                     self.config_draft["single"]["picture-options"] if border > 0 else
+                     self.draft["picture-options"])
         options = PLACEMENT_KEYS[:-1] if multi else PLACEMENT_KEYS
         self.placement_dropdown.set_selected(options.index(placement) if placement in options else 0)
+        border_values = [value for _label, value in BORDERS]
+        self.border_dropdown.set_selected(
+            min(range(len(border_values)), key=lambda index: abs(border_values[index] - border)))
         color = Gdk.RGBA()
         if not color.parse(self.draft["primary-color"]):
             color.parse("#000000")
         self.color_button.set_rgba(color)
         self.color_value_label.set_text("#{:02X}{:02X}{:02X}".format(
             round(color.red * 255), round(color.green * 255), round(color.blue * 255)))
-        if placement in ("zoom", "stretched", "spanned"):
+        if border > 0:
+            self.color_row.set_subtitle(
+                "Shown in the selected border around each wallpaper image")
+        elif placement in ("zoom", "stretched", "spanned"):
             self.color_row.set_subtitle(
                 "Hidden by Fill, Stretch, and Span because the image covers the screen")
         elif placement == "wallpaper":
@@ -440,7 +481,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
                 image = render_composite(self.monitor_specs,
                                          self.config_draft["images"][self.selected_key],
                                          placement, self.draft["primary-color"],
-                                         scale=scale, allow_missing=True)
+                                         scale=scale, allow_missing=True, border=border)
                 self.preview.update_composite(image, self.monitor_specs)
                 self.hint.set_visible(False)
             except (OSError, ValueError, GLib.Error) as error:
@@ -449,7 +490,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
                 self.hint.set_text(str(error))
                 self.hint.set_visible(True)
         else:
-            self.preview.update(uri, placement, color)
+            self.preview.update(uri, placement, color, border)
             self.hint.set_visible(False)
         changed = self.has_changes()
         self.apply_button.set_sensitive(changed)
@@ -497,22 +538,40 @@ class WallpaperWindow(Adw.ApplicationWindow):
             return
         enable = self.monitor_switch.get_active()
         if enable:
-            self.config_draft["single"] = {
-                key: self.draft[key] for key in (*PICTURE_KEYS, "picture-options")}
+            if not self.uses_generated_wallpaper(self.config_draft):
+                self.config_draft["single"] = {
+                    key: self.draft[key] for key in (*PICTURE_KEYS, "picture-options")}
             for key in PICTURE_KEYS:
                 for monitor in self.monitor_specs:
                     self.config_draft["images"][key].setdefault(
                         monitor.connector, self.config_draft["single"][key])
-            if self.config_saved["enabled"]:
+            if self.uses_generated_wallpaper(self.config_saved):
                 for key in (*PICTURE_KEYS, "picture-options"):
                     self.draft[key] = self.saved[key]
         else:
             for key in (*PICTURE_KEYS, "picture-options"):
                 self.draft[key] = self.config_draft["single"][key]
         self.config_draft["enabled"] = enable
-        self.layout_dirty = (enable and self.config_saved["enabled"] and
+        self.layout_dirty = (self.uses_generated_wallpaper(self.config_draft) and
+                             self.uses_generated_wallpaper(self.config_saved) and
                              layout_signature(self.monitor_specs) != self.config_saved["layout"])
         self.render_draft()
+
+    def on_border_changed(self, *_args):
+        if self.refreshing:
+            return
+        index = self.border_dropdown.get_selected()
+        if index < len(BORDERS):
+            was_generated = self.uses_generated_wallpaper(self.config_draft)
+            new_border = BORDERS[index][1]
+            if not self.config_draft["enabled"] and not was_generated and new_border > 0:
+                for key in (*PICTURE_KEYS, "picture-options"):
+                    self.config_draft["single"][key] = self.draft[key]
+            self.config_draft["border"] = new_border
+            if not self.config_draft["enabled"] and was_generated and new_border == 0:
+                for key in (*PICTURE_KEYS, "picture-options"):
+                    self.draft[key] = self.config_draft["single"][key]
+            self.render_draft()
 
     def create_image_dialog(self, current_uri, raster_only=False):
         dialog = Gtk.FileDialog(title="Choose a wallpaper image")
@@ -565,8 +624,11 @@ class WallpaperWindow(Adw.ApplicationWindow):
         if self.config_draft["enabled"]:
             self.config_draft["images"][other_key] = self.config_draft["images"][self.selected_key].copy()
         else:
-            self.draft[other_key] = self.draft[self.selected_key]
-            self.config_draft["single"][other_key] = self.draft[other_key]
+            uri = (self.config_draft["single"][self.selected_key]
+                   if self.config_draft.get("border", 0.0) > 0 else
+                   self.draft[self.selected_key])
+            self.draft[other_key] = uri
+            self.config_draft["single"][other_key] = uri
         self.render_draft()
 
     def stage_image_for_both(self, uri):
@@ -606,7 +668,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
         self.draft = self.saved.copy()
         self.config_saved = load_config(self.saved)
         self.config_draft = cloned(self.config_saved)
-        self.layout_dirty = (self.config_saved["enabled"] and
+        self.layout_dirty = (self.uses_generated_wallpaper(self.config_saved) and
                              layout_signature(self.monitor_specs) != self.config_saved["layout"])
         self.render_draft()
 
@@ -653,7 +715,14 @@ class WallpaperWindow(Adw.ApplicationWindow):
         next_settings = self.draft.copy()
         next_config = cloned(self.config_draft)
         try:
-            if next_config["enabled"]:
+            if self.uses_generated_wallpaper(next_config):
+                if not next_config["enabled"]:
+                    next_config["images"] = {
+                        key: {monitor.connector: next_config["single"][key]
+                              for monitor in self.monitor_specs}
+                        for key in PICTURE_KEYS
+                    }
+                    next_config["placement"] = next_config["single"]["picture-options"]
                 generated, signature = generate_wallpapers(
                     self.monitor_specs, next_config, next_settings["primary-color"])
                 next_settings.update(generated)
@@ -690,7 +759,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
         self.layout_dirty = False
         try:
             clean_old_wallpapers(next_config["generated"].values()
-                                 if next_config["enabled"] else ())
+                                 if self.uses_generated_wallpaper(next_config) else ())
         except OSError:
             pass
         self.render_draft()
