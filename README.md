@@ -40,7 +40,8 @@ Choose **Light** or **Dark**, select an image, and adjust its placement. The
 preview updates while GNOME's wallpaper stays unchanged. Press **Apply** when
 you are happy with the result, or **Revert** to discard the edits. **Copy this
 image to Dark/Light** copies the selected image to the other appearance when
-you apply.
+you apply. The background color fills space left around fitted or centered
+images; it is hidden when the image already covers the screen.
 
 For separate images on each monitor, turn on **Different image on each
 monitor** and choose an image in each connected monitor row. Repeat for the

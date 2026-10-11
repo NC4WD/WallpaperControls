@@ -22,7 +22,7 @@ from monitor_state import (PICTURE_KEYS, clean_old_wallpapers, cloned,
 
 
 APP_ID = "io.github.nc4wd.WallpaperControls"
-APP_VERSION = "0.1.2"
+APP_VERSION = "0.1.3"
 PROJECT_URL = "https://github.com/NC4WD/WallpaperControls"
 BACKGROUND_SCHEMA = "org.gnome.desktop.background"
 PLACEMENTS = (
@@ -326,14 +326,19 @@ class WallpaperWindow(Adw.ApplicationWindow):
         placement_row.set_activatable_widget(self.placement_dropdown)
         placement_group.add(placement_row)
 
-        color_row = Adw.ActionRow(title="Border color",
-                                  subtitle="Visible with Fit, Center, and some tiled images")
-        self.color_button = Gtk.ColorDialogButton(dialog=Gtk.ColorDialog())
+        self.color_row = Adw.ActionRow(title="Background color")
+        self.color_value_label = Gtk.Label()
+        self.color_value_label.add_css_class("dim-label")
+        color_dialog = Gtk.ColorDialog(
+            title="Choose Background Color", with_alpha=False)
+        self.color_button = Gtk.ColorDialogButton(dialog=color_dialog)
         self.color_button.set_valign(Gtk.Align.CENTER)
+        self.color_button.set_tooltip_text("Choose the color behind the wallpaper image")
         self.color_button.connect("notify::rgba", self.on_color_changed)
-        color_row.add_suffix(self.color_button)
-        color_row.set_activatable_widget(self.color_button)
-        placement_group.add(color_row)
+        self.color_row.add_suffix(self.color_value_label)
+        self.color_row.add_suffix(self.color_button)
+        self.color_row.set_activatable_widget(self.color_button)
+        placement_group.add(self.color_row)
 
         self.settings.connect("changed", self.on_settings_changed)
         self.monitor_model.connect("items-changed", self.on_monitors_changed)
@@ -410,6 +415,20 @@ class WallpaperWindow(Adw.ApplicationWindow):
         if not color.parse(self.draft["primary-color"]):
             color.parse("#000000")
         self.color_button.set_rgba(color)
+        self.color_value_label.set_text("#{:02X}{:02X}{:02X}".format(
+            round(color.red * 255), round(color.green * 255), round(color.blue * 255)))
+        if placement in ("zoom", "stretched", "spanned"):
+            self.color_row.set_subtitle(
+                "Hidden by Fill, Stretch, and Span because the image covers the screen")
+        elif placement == "wallpaper":
+            self.color_row.set_subtitle(
+                "Visible through transparent areas of a tiled image")
+        elif not multi and placement == "scaled" and self.image_matches_screen(uri):
+            self.color_row.set_subtitle(
+                "Hidden because this image already matches your screen shape")
+        else:
+            self.color_row.set_subtitle(
+                "Fills any uncovered space around the wallpaper image")
         if multi:
             for row, monitor in zip(self.monitor_rows, self.monitor_specs):
                 monitor_uri = self.config_draft["images"][self.selected_key].get(monitor.connector, "")
@@ -436,6 +455,21 @@ class WallpaperWindow(Adw.ApplicationWindow):
         self.apply_button.set_sensitive(changed)
         self.revert_button.set_sensitive(changed)
         self.refreshing = False
+
+    def image_matches_screen(self, uri):
+        path = file_from_uri(uri)
+        if not path or not os.path.isfile(path):
+            return False
+        try:
+            _format, width, height = GdkPixbuf.Pixbuf.get_file_info(path)
+        except (GLib.Error, TypeError, ValueError):
+            return False
+        if width <= 0 or height <= 0 or not self.monitor_specs:
+            return False
+        image_ratio = width / height
+        return all(abs(image_ratio - monitor.width / monitor.height) /
+                   (monitor.width / monitor.height) < 0.01
+                   for monitor in self.monitor_specs if monitor.height > 0)
 
     def on_settings_changed(self, _settings, _key):
         if self.applying:

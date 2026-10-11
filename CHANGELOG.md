@@ -1,5 +1,11 @@
 # Changelog
 
+## 0.1.3 — 2026-10-11
+
+- Show the selected background color as a hex value.
+- Explain when the wallpaper covers the background color, including fitted images that already match the screen shape.
+- Removed the unused transparency control from the color chooser.
+
 ## 0.1.2 — 2026-10-03
 
 - Fixed the local app launcher showing a generic gear by installing a PNG icon and pointing both desktop entries directly to it.
