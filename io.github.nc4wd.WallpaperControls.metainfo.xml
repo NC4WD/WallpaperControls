@@ -6,9 +6,9 @@
   <name>Wallpaper Controls</name>
   <summary>Choose how wallpapers appear on GNOME desktops</summary>
   <description>
-    <p>Wallpaper Controls brings image placement choices back to a simple desktop window. Preview Fill, Fit, Stretch, Center, Tile, and Span Displays before applying a wallpaper.</p>
-    <p>Choose separate images for light and dark appearance, set a background color and visible border size, and give each connected monitor its own image. The app combines monitor images into one wallpaper that GNOME can display across the desktop.</p>
-    <p>Edits remain in the preview until you press Apply. Revert discards pending changes and Undo Last Apply restores the previous wallpaper. Choose image alignment, drop an image from Files, identify displays, and automatically rebuild applied wallpapers when your display arrangement changes.</p>
+    <p>Choose how your wallpaper fits the screen: fill it, show the whole image, stretch it, keep its original size, tile it, or spread it across your monitors. Preview changes before pressing Apply.</p>
+    <p>Use different images in light and dark mode or give each monitor its own wallpaper. Choose the image position, background color, and border width.</p>
+    <p>Drop an image from Files to preview it. Discard Changes clears edits you haven't applied, and Restore Previous Wallpaper undoes your last wallpaper change. Show monitor numbers to identify your screens and automatically adjust saved wallpapers when your monitor setup changes.</p>
   </description>
   <developer id="io.github.nc4wd">
     <name>NC4WD</name>

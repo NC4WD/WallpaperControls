@@ -73,14 +73,14 @@ def bounds(monitors):
 def check_layout(monitors, allow_mirrored=False):
     for index, a in enumerate(monitors):
         if a.width <= 0 or a.height <= 0:
-            raise ValueError(f"{a.label} has an invalid display size.")
+            raise ValueError(f"The size of {a.label} couldn't be read. Check your display settings.")
         for b in monitors[index + 1:]:
             overlap_x = min(a.x + a.width, b.x + b.width) - max(a.x, b.x)
             overlap_y = min(a.y + a.height, b.y + b.height) - max(a.y, b.y)
             if overlap_x > 0 and overlap_y > 0:
                 if allow_mirrored and (a.x, a.y, a.width, a.height) == (b.x, b.y, b.width, b.height):
                     continue
-                raise ValueError("Mirrored displays cannot show different wallpapers.")
+                raise ValueError("These monitors show the same screen. Turn off mirroring to use different wallpapers.")
 
 
 def placement_covers_viewport(image_width, image_height, viewport_width,
@@ -133,8 +133,8 @@ def _load_image(uri):
                 with Image.open(BytesIO(data)) as source:
                     return source.convert("RGBA")
             except Exception as svg_error:
-                raise ValueError(f"Cannot open {path.name}: {svg_error}") from svg_error
-        raise ValueError(f"Cannot open {path.name}: {error}") from error
+                raise ValueError(f"Couldn't open {path.name}. Choose another image.") from svg_error
+        raise ValueError(f"Couldn't open {path.name}. Choose another image.") from error
 
 
 def _place_image(canvas, source, rectangle, placement, scale, alignment="center"):
@@ -177,19 +177,19 @@ def render_composite(monitors, image_uris, placement, color, scale=None,
     check_layout(monitors, allow_mirrored=allow_mirrored)
     left, top, logical_width, logical_height = bounds(monitors)
     if placement not in (*PER_MONITOR_PLACEMENTS, "spanned"):
-        raise ValueError("Choose a placement for the images on each monitor.")
+        raise ValueError("Choose how to size the wallpaper image.")
     if alignment not in ALIGNMENTS:
-        raise ValueError("Choose a valid image alignment.")
+        raise ValueError("Choose an image position.")
     if scale is None:
         scale = max(m.scale for m in monitors)
     if not math.isfinite(scale) or scale <= 0:
-        raise ValueError("Invalid display scale.")
+        raise ValueError("The monitor's scale couldn't be read. Check your display settings.")
     if not isinstance(border, (int, float)) or not math.isfinite(border) or not 0 <= border <= 0.25:
-        raise ValueError("Invalid wallpaper border size.")
+        raise ValueError("Choose a border width.")
     width = max(1, round(logical_width * scale))
     height = max(1, round(logical_height * scale))
     if width * height > MAX_PIXELS:
-        raise ValueError("The combined monitor layout is too large to render safely.")
+        raise ValueError("This monitor arrangement is too large. Try a lower display resolution.")
     canvas = Image.new("RGBA", (width, height), (*_color_rgb(color), 255))
     if placement == "spanned":
         uri = image_uris.get(monitors[0].connector)

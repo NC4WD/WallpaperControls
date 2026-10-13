@@ -29,13 +29,21 @@ APP_VERSION = "0.2.0"
 PROJECT_URL = "https://github.com/NC4WD/WallpaperControls"
 BACKGROUND_SCHEMA = "org.gnome.desktop.background"
 PLACEMENTS = (
-    ("Fill Screen", "zoom"),
-    ("Fit Screen", "scaled"),
+    ("Fill screen", "zoom"),
+    ("Fit image", "scaled"),
     ("Stretch", "stretched"),
-    ("Center", "centered"),
+    ("Original size", "centered"),
     ("Tile", "wallpaper"),
-    ("Span Displays", "spanned"),
+    ("Span monitors", "spanned"),
 )
+PLACEMENT_DESCRIPTIONS = {
+    "zoom": "Fill the screen, cropping edges if needed",
+    "scaled": "Show the whole image without cropping",
+    "stretched": "Stretch the image to fill the screen",
+    "centered": "Keep the original image size; large images may be cropped",
+    "wallpaper": "Repeat the image to fill the screen",
+    "spanned": "Spread one image across all monitors",
+}
 PLACEMENT_KEYS = [value for _, value in PLACEMENTS]
 BORDERS = (
     ("None", 0.0),
@@ -63,10 +71,10 @@ def image_uri_from_file(filename):
     try:
         info = GdkPixbuf.Pixbuf.get_file_info(str(path))
         if not info[0] or info[1] <= 0 or info[2] <= 0:
-            raise ValueError("The selected file is not a supported image.")
+            raise ValueError("This file can't be opened as an image. Choose another file.")
         GdkPixbuf.Pixbuf.new_from_file_at_scale(str(path), 1, 1, True)
     except GLib.Error as error:
-        raise ValueError("The selected file is not a supported image.") from error
+        raise ValueError("This file can't be opened as an image. Choose another file.") from error
     return Gio.File.new_for_path(str(path)).get_uri()
 
 
@@ -200,19 +208,20 @@ class WallpaperWindow(Adw.ApplicationWindow):
 
         toolbar = Adw.ToolbarView()
         header = Adw.HeaderBar()
-        self.revert_button = Gtk.Button(label="Revert")
+        self.revert_button = Gtk.Button(label="Discard Changes")
+        self.revert_button.set_tooltip_text("Discard edits you haven't applied")
         self.revert_button.connect("clicked", self.on_revert)
         header.pack_start(self.revert_button)
         self.apply_button = Gtk.Button(label="Apply")
         self.apply_button.add_css_class("suggested-action")
-        self.apply_button.set_tooltip_text("Apply the previewed changes to your desktop")
+        self.apply_button.set_tooltip_text("Save these changes to your desktop wallpaper")
         self.apply_button.connect("clicked", self.on_apply)
         header.pack_end(self.apply_button)
         menu = Gio.Menu()
-        menu.append("Undo Last Apply", "win.undo")
-        menu.append("Identify Displays", "win.identify")
+        menu.append("Restore Previous Wallpaper", "win.undo")
+        menu.append("Show Monitor Numbers", "win.identify")
         menu_button = Gtk.MenuButton(icon_name="open-menu-symbolic", menu_model=menu)
-        menu_button.set_tooltip_text("Wallpaper actions")
+        menu_button.set_tooltip_text("More options")
         header.pack_end(menu_button)
         self.undo_action = Gio.SimpleAction.new("undo", None)
         self.undo_action.connect("activate", self.on_undo)
@@ -264,8 +273,9 @@ class WallpaperWindow(Adw.ApplicationWindow):
 
         image_group = Adw.PreferencesGroup(title="Wallpaper")
         content.append(image_group)
-        mode_row = Adw.ActionRow(title="Appearance", subtitle="Choose which wallpaper to edit")
-        self.mode_dropdown = Gtk.DropDown.new_from_strings(["Light", "Dark"])
+        mode_row = Adw.ActionRow(
+            title="Wallpaper for", subtitle="Edit the wallpaper used in light or dark mode")
+        self.mode_dropdown = Gtk.DropDown.new_from_strings(["Light mode", "Dark mode"])
         self.mode_dropdown.set_valign(Gtk.Align.CENTER)
         self.mode_dropdown.set_selected(1 if self.selected_key == "picture-uri-dark" else 0)
         self.mode_dropdown.connect("notify::selected", self.on_mode_changed)
@@ -274,8 +284,8 @@ class WallpaperWindow(Adw.ApplicationWindow):
         image_group.add(mode_row)
 
         monitor_mode_row = Adw.ActionRow(
-            title="Different image on each monitor",
-            subtitle="Combines your choices into a wallpaper that spans your displays")
+            title="Different wallpapers per monitor",
+            subtitle="Choose a separate image for each monitor")
         self.monitor_switch = Gtk.Switch()
         self.monitor_switch.set_valign(Gtk.Align.CENTER)
         self.monitor_switch.set_active(self.config_draft["enabled"])
@@ -284,7 +294,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
         monitor_mode_row.set_activatable_widget(self.monitor_switch)
         image_group.add(monitor_mode_row)
 
-        self.image_row = Adw.ActionRow(title="Image")
+        self.image_row = Adw.ActionRow(title="Wallpaper image")
         choose_button = Gtk.Button(label="Choose Image…")
         choose_button.set_valign(Gtk.Align.CENTER)
         choose_button.connect("clicked", self.on_choose_image)
@@ -294,33 +304,36 @@ class WallpaperWindow(Adw.ApplicationWindow):
         image_group.add(self.image_row)
 
         self.copy_row = Adw.ActionRow(
-            subtitle="Copies the selected image to the other appearance when you apply")
-        self.copy_button = Gtk.Button(label="Copy")
+            subtitle="Use the selected image in light and dark mode")
+        self.copy_button = Gtk.Button(label="Use for Both")
         self.copy_button.set_valign(Gtk.Align.CENTER)
         self.copy_button.connect("clicked", self.on_copy_image)
         self.copy_row.add_suffix(self.copy_button)
         image_group.add(self.copy_row)
 
         self.monitors_group = Adw.PreferencesGroup(title="Connected monitors")
-        identify_button = Gtk.Button(label="Identify Displays")
+        identify_button = Gtk.Button(label="Show Numbers")
+        identify_button.set_tooltip_text("Show a number on each monitor for five seconds")
         identify_button.connect("clicked", self.on_identify)
         self.monitors_group.set_header_suffix(identify_button)
         content.append(self.monitors_group)
         self.monitor_rows = []
         self.rebuild_monitor_rows()
 
-        placement_group = Adw.PreferencesGroup(title="Placement and borders")
+        placement_group = Adw.PreferencesGroup(
+            title="Image layout",
+            description="These settings apply to both modes and all monitors")
         content.append(placement_group)
-        placement_row = Adw.ActionRow(title="Placement")
+        self.placement_row = Adw.ActionRow(title="Image sizing")
         self.placement_dropdown = Gtk.DropDown.new_from_strings([label for label, _ in PLACEMENTS])
         self.placement_dropdown.set_valign(Gtk.Align.CENTER)
         self.placement_dropdown.connect("notify::selected", self.on_placement_changed)
-        placement_row.add_suffix(self.placement_dropdown)
-        placement_row.set_activatable_widget(self.placement_dropdown)
-        placement_group.add(placement_row)
+        self.placement_row.add_suffix(self.placement_dropdown)
+        self.placement_row.set_activatable_widget(self.placement_dropdown)
+        placement_group.add(self.placement_row)
 
         self.alignment_row = Adw.ActionRow(
-            title="Image alignment", subtitle="Choose which part of the image to keep visible")
+            title="Image position", subtitle="Choose where the image sits on the screen")
         self.alignment_dropdown = Gtk.DropDown.new_from_strings(
             [label for label, _ in ALIGNMENT_CHOICES])
         self.alignment_dropdown.set_valign(Gtk.Align.CENTER)
@@ -336,7 +349,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
             title="Choose Background Color", with_alpha=False)
         self.color_button = Gtk.ColorDialogButton(dialog=color_dialog)
         self.color_button.set_valign(Gtk.Align.CENTER)
-        self.color_button.set_tooltip_text("Choose the color behind the wallpaper image")
+        self.color_button.set_tooltip_text("Choose a color for the space around the image")
         self.color_button.connect("notify::rgba", self.on_color_changed)
         self.color_row.add_suffix(self.color_value_label)
         self.color_row.add_suffix(self.color_button)
@@ -344,8 +357,8 @@ class WallpaperWindow(Adw.ApplicationWindow):
         placement_group.add(self.color_row)
 
         self.border_row = Adw.ActionRow(
-            title="Border size",
-            subtitle="Leaves space around each image for the background color")
+            title="Border width",
+            subtitle="Add space around the image to show the background color")
         self.border_dropdown = Gtk.DropDown.new_from_strings([label for label, _ in BORDERS])
         self.border_dropdown.set_valign(Gtk.Align.CENTER)
         self.border_dropdown.connect("notify::selected", self.on_border_changed)
@@ -353,11 +366,13 @@ class WallpaperWindow(Adw.ApplicationWindow):
         self.border_row.set_activatable_widget(self.border_dropdown)
         placement_group.add(self.border_row)
 
-        display_group = Adw.PreferencesGroup(title="Display changes")
+        display_group = Adw.PreferencesGroup(
+            title="Monitor changes",
+            description="When enabled, works with the app closed and starts at login")
         content.append(display_group)
         self.auto_row = Adw.ActionRow(
-            title="Keep wallpapers aligned",
-            subtitle="Runs in the background and at login to rebuild applied wallpapers when displays change")
+            title="Adjust to monitor changes",
+            subtitle="Keep saved wallpapers in place when monitors connect, disconnect, or move")
         self.auto_switch = Gtk.Switch(valign=Gtk.Align.CENTER)
         self.auto_switch.connect("notify::active", self.on_auto_changed)
         self.auto_row.add_suffix(self.auto_switch)
@@ -414,20 +429,23 @@ class WallpaperWindow(Adw.ApplicationWindow):
         self.monitor_switch.set_active(multi)
         self.image_row.set_visible(not multi)
         self.monitors_group.set_visible(multi)
-        self.drop_hint.set_text("Drop onto a display in the preview or its row, then press Apply"
+        self.drop_hint.set_text("Drop an image onto a monitor below or in the preview, then press Apply"
                                 if multi else "Drop an image here, then press Apply")
         uri = self.config_draft["single"][self.selected_key]
         path = file_from_uri(uri)
         self.image_row.set_subtitle(Path(path).name if path else
                                     ("No image selected" if not uri else uri))
-        destination = "Dark" if self.selected_key == "picture-uri" else "Light"
+        source_mode = "light" if self.selected_key == "picture-uri" else "dark"
+        destination = "dark" if self.selected_key == "picture-uri" else "light"
         if multi:
-            self.copy_row.set_title(f"Copy all monitor images to {destination}")
-            self.copy_row.set_subtitle("Copies every monitor's image to the other appearance when you apply")
+            self.copy_row.set_title("Same images in both modes")
+            self.copy_row.set_subtitle(f"Use these {source_mode} mode images in {destination} mode too")
+            self.copy_button.set_tooltip_text("Use these monitor images in both modes when you press Apply")
             self.copy_button.set_sensitive(any(self.config_draft["images"][self.selected_key].values()))
         else:
-            self.copy_row.set_title(f"Copy this image to {destination}")
-            self.copy_row.set_subtitle("Copies this image to the other appearance when you apply")
+            self.copy_row.set_title("Same image in both modes")
+            self.copy_row.set_subtitle(f"Use this {source_mode} mode image in {destination} mode too")
+            self.copy_button.set_tooltip_text("Use this image in both modes when you press Apply")
             self.copy_button.set_sensitive(bool(uri))
         if multi != self.placement_mode_is_multi:
             options = PLACEMENTS[:-1] if multi else PLACEMENTS
@@ -437,14 +455,25 @@ class WallpaperWindow(Adw.ApplicationWindow):
                      self.config_draft["single"]["picture-options"])
         options = PLACEMENT_KEYS[:-1] if multi else PLACEMENT_KEYS
         self.placement_dropdown.set_selected(options.index(placement) if placement in options else 0)
+        self.placement_row.set_subtitle(PLACEMENT_DESCRIPTIONS.get(placement, "Choose how the image fills the screen"))
         alignments = [key for _label, key in ALIGNMENT_CHOICES]
         self.alignment_dropdown.set_selected(alignments.index(alignment))
         self.alignment_row.set_sensitive(placement in ("zoom", "scaled", "centered", "spanned"))
+        if placement in ("zoom", "spanned"):
+            self.alignment_row.set_subtitle("Choose which part of the image stays visible when cropped")
+        elif placement in ("scaled", "centered"):
+            self.alignment_row.set_subtitle("Choose where the image sits on the screen")
+        else:
+            self.alignment_row.set_subtitle("This sizing option does not use image position")
         border_values = [value for _label, value in BORDERS]
         self.border_dropdown.set_selected(
             min(range(len(border_values)), key=lambda index: abs(border_values[index] - border)))
         self.auto_switch.set_active(self.config_draft["auto_rebuild"])
         self.auto_row.set_sensitive(self.uses_generated_wallpaper(self.config_draft))
+        self.auto_row.set_subtitle(
+            "Keep saved wallpapers in place when monitors connect, disconnect, or move"
+            if self.uses_generated_wallpaper(self.config_draft) else
+            "Your current image layout already adjusts automatically")
         self.undo_action.set_enabled(bool(self.config_saved.get("undo")) and not self.has_changes())
         color = Gdk.RGBA()
         if not color.parse(self.draft["primary-color"]):
@@ -453,15 +482,15 @@ class WallpaperWindow(Adw.ApplicationWindow):
         self.color_value_label.set_text("#{:02X}{:02X}{:02X}".format(
             round(color.red * 255), round(color.green * 255), round(color.blue * 255)))
         if border > 0:
-            self.color_row.set_subtitle("Shown in the selected border around each wallpaper image")
+            self.color_row.set_subtitle("Fills the border around the image")
         elif placement in ("zoom", "stretched", "spanned"):
-            self.color_row.set_subtitle("Hidden because the image fills the display")
+            self.color_row.set_subtitle("Add a border below to make this color visible")
         elif placement == "wallpaper":
-            self.color_row.set_subtitle("Visible through transparent areas of a tiled image")
+            self.color_row.set_subtitle("Shows through transparent parts of a tiled image")
         elif not multi and self.background_is_hidden(uri, placement):
-            self.color_row.set_subtitle("Hidden because this image covers your screen; choose a border size to show it")
+            self.color_row.set_subtitle("Add a border below to make this color visible")
         else:
-            self.color_row.set_subtitle("Fills any uncovered space around the wallpaper image")
+            self.color_row.set_subtitle("Fills the empty space around the image")
         for row, monitor in zip(self.monitor_rows, self.monitor_specs):
             monitor_uri = self.config_draft["images"][self.selected_key].get(monitor.connector, "")
             filename = Path(file_from_uri(monitor_uri)).name if file_from_uri(monitor_uri) else "No image selected"
@@ -690,7 +719,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
         if self.config_draft["enabled"]:
             connector = self.preview.monitor_at(x, y)
             if connector is None:
-                self.show_error("Drop onto a numbered display in the preview, or onto its row.")
+                self.show_error("Drop the image onto a numbered monitor or its row below.")
                 return False
         return self.drop_file(value, connector)
 
@@ -708,15 +737,15 @@ class WallpaperWindow(Adw.ApplicationWindow):
                 continue
             window = Gtk.Window(application=self.get_application(),
                                 transient_for=self, decorated=False,
-                                title=f"Display {number + 1}")
+                                title=f"Monitor {number + 1}")
             window.add_css_class("display-identification")
             box = Gtk.Box(orientation=Gtk.Orientation.VERTICAL, spacing=16,
                           halign=Gtk.Align.CENTER, valign=Gtk.Align.CENTER)
             number_label = Gtk.Label(label=str(number + 1))
             number_label.add_css_class("display-number")
             box.append(number_label)
-            box.append(Gtk.Label(label=monitor.get_connector() or f"Display {number + 1}"))
-            box.append(Gtk.Label(label="Press Esc or click to close · Closes after 5 seconds"))
+            box.append(Gtk.Label(label=monitor.get_connector() or f"Monitor {number + 1}"))
+            box.append(Gtk.Label(label="Closes in 5 seconds. Press Esc or click to close now."))
             window.set_child(box)
             key_controller = Gtk.EventControllerKey()
             key_controller.connect("key-pressed", self.on_identify_key)
@@ -831,9 +860,9 @@ class WallpaperWindow(Adw.ApplicationWindow):
             return True
         self._close_dialog_open = True
         dialog = Adw.MessageDialog.new(
-            self, "Discard changes?", "Your wallpaper changes have not been applied.")
+            self, "Discard your changes?", "Your changes haven't been applied to the desktop.")
         dialog.add_response("keep", "Keep Editing")
-        dialog.add_response("discard", "Discard")
+        dialog.add_response("discard", "Discard Changes")
         dialog.set_default_response("keep")
         dialog.set_close_response("keep")
         dialog.set_response_appearance("discard", Adw.ResponseAppearance.DESTRUCTIVE)
@@ -865,7 +894,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
 
     def on_undo(self, *_args):
         if self.has_changes():
-            self.show_error("Apply or Revert your pending edits before using Undo Last Apply.")
+            self.show_error("Apply or Discard Changes before restoring your previous wallpaper.")
             return
         self.applying = True
         try:
@@ -963,7 +992,7 @@ class WallpaperApp(Adw.Application):
         except (OSError, ValueError, GLib.Error, MemoryError) as error:
             window = self.main_window()
             if window:
-                window.show_error(f"Could not rebuild the wallpaper: {error}")
+                window.show_error(f"Couldn't adjust the wallpaper for your monitors. {error}")
             else:
                 print(f"Wallpaper Controls: {error}", file=sys.stderr)
         finally:
@@ -997,7 +1026,8 @@ class WallpaperApp(Adw.Application):
             sync_autostart(config)
         except OSError as error:
             window = self.main_window()
-            message = f"Wallpaper saved, but automatic startup could not be configured: {error}"
+            message = ("Your wallpaper was saved, but automatic monitor adjustments couldn't "
+                       f"be enabled at login. {error}")
             if window:
                 window.show_error(message)
             else:

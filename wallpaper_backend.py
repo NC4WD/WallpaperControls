@@ -10,6 +10,14 @@ from monitor_state import (EDITABLE_KEYS, PICTURE_KEYS, clean_old_wallpapers,
                            uses_generated_wallpaper)
 from monitor_wallpaper import layout_signature
 
+SETTING_NAMES = {
+    "picture-uri": "the light mode wallpaper",
+    "picture-uri-dark": "the dark mode wallpaper",
+    "picture-options": "image sizing",
+    "primary-color": "the background color",
+    "secondary-color": "the background color",
+    "color-shading-type": "the background color style",
+}
 
 def read_settings(settings):
     return {key: settings.get_string(key) for key in EDITABLE_KEYS}
@@ -22,13 +30,13 @@ def _commit(settings, values, config, sync):
                if values[key] != previous_values[key]}
     for key in changes:
         if not settings.is_writable(key):
-            raise ValueError(f"GNOME does not allow changes to {key}.")
+            raise ValueError(f"Your system doesn't allow changes to {SETTING_NAMES[key]}.")
     settings.delay()
     config_written = False
     try:
         for key, value in changes.items():
             if not settings.set_string(key, value):
-                raise ValueError(f"Could not save {key}.")
+                raise ValueError(f"Couldn't save {SETTING_NAMES[key]}. Please try again.")
         save_config(config)
         config_written = True
         settings.apply()
@@ -41,7 +49,7 @@ def _commit(settings, values, config, sync):
         raise
     actual = read_settings(settings)
     if actual != values:
-        raise ValueError("GNOME did not save all wallpaper settings. Please try again.")
+        raise ValueError("Your wallpaper settings weren't saved completely. Please try again.")
     try:
         clean_old_wallpapers(retained_wallpapers(actual, config))
     except OSError:
@@ -104,7 +112,7 @@ def undo_last_apply(settings, monitors, *, sync=None):
         return apply_wallpaper(settings, monitors, undo["settings"], previous,
                                record_undo=False, sync=sync)
     if missing_generated:
-        raise ValueError("A previous wallpaper image was moved or deleted, so it cannot be restored.")
+        raise ValueError("Your previous image was moved or deleted. Choose it again to restore it.")
     return _commit(settings, undo["settings"], previous, sync)
 
 

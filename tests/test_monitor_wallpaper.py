@@ -68,7 +68,7 @@ def test_border_supports_a_spanned_single_image(tmp_path):
 def test_mirrored_displays_and_missing_images_fail_clearly(tmp_path):
     red = image_uri(tmp_path / "red.png", "red")
     monitor = MonitorSpec("one", "One", 0, 0, 20, 20)
-    with pytest.raises(ValueError, match="Mirrored"):
+    with pytest.raises(ValueError, match="mirroring"):
         render_composite([monitor, MonitorSpec("two", "Two", 0, 0, 20, 20)],
                          {"one": red, "two": red}, "zoom", "#000000")
     with pytest.raises(ValueError, match="Choose an image for One"):

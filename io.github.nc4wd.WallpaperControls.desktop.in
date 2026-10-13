@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Wallpaper Controls
-Comment=Choose images and placement for your GNOME wallpaper
+Comment=Choose wallpaper images, sizing, and monitor layouts
 Exec=@EXEC@
 Icon=io.github.nc4wd.WallpaperControls
 Terminal=false

@@ -2,6 +2,7 @@
 
 ## 0.2.0 — 2026-10-12
 
+- Simplified labels, instructions, and error messages. Discard Changes and Restore Previous Wallpaper now clearly distinguish unapplied edits from undoing the last change. Light and dark modes, image sizing, monitor numbers, and automatic monitor adjustments use consistent wording.
 - Added Undo Last Apply, including restoration after reopening the app and retention of the previous generated wallpaper files.
 - Added image alignment for Fill, Fit, Center, and Span with a shared renderer for the preview and final wallpaper.
 - Added Identify Displays with numbered labels that dismiss after five seconds, on click, or with Escape.

@@ -133,7 +133,7 @@ def test_second_image_failure_removes_incomplete_generation(desktop):
     config = default_config(original)
     config["border"] = 0.06
     config["single"]["picture-uri-dark"] = Path("/missing/wallpaper.png").as_uri()
-    with pytest.raises(ValueError, match="Cannot open"):
+    with pytest.raises(ValueError, match="Couldn't open"):
         apply_wallpaper(settings, monitors, original, config)
     assert settings.values == original
     assert not list(generated_dir().glob("*.png"))
