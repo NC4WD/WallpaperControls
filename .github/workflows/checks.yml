@@ -12,7 +12,7 @@ jobs:
       - name: Install system dependencies
         run: |
           sudo apt-get update
-          sudo apt-get install -y appstream desktop-file-utils gir1.2-adw-1 \
+          sudo apt-get install -y appstream desktop-file-utils lintian gir1.2-adw-1 \
             gir1.2-gdkpixbuf-2.0 gir1.2-gtk-4.0 gsettings-desktop-schemas librsvg2-common \
             webp-pixbuf-loader python3-gi python3-gi-cairo python3-pil python3-pytest xvfb xauth dbus
       - name: Check source and metadata
@@ -37,3 +37,15 @@ jobs:
           ./uninstall.sh
           test ! -e "$WALLPAPER_CONTROLS_INSTALL_HOME/.local/bin/wallpaper-controls"
           test ! -e "$icon"
+      - name: Build and check Ubuntu package
+        run: |
+          /usr/bin/python3 packaging/build.py
+          package=dist/wallpaper-controls_*_all.deb
+          lintian --fail-on error,warning $package
+          unpacked="$(mktemp -d)"
+          dpkg-deb --extract $package "$unpacked"
+          desktop-file-validate "$unpacked/usr/share/applications/"*.desktop
+          appstreamcli validate --no-net "$unpacked/usr/share/metainfo/"*.xml
+          sudo apt-get install -y ./$package
+          /usr/bin/wallpaper-controls --version
+          sudo apt-get remove -y wallpaper-controls

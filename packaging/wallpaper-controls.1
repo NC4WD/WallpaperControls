@@ -1,0 +1,44 @@
+.\" SPDX-License-Identifier: GPL-3.0-or-later
+.TH WALLPAPER-CONTROLS 1 "October 2026" "Wallpaper Controls @VERSION@" "User Commands"
+.SH NAME
+wallpaper-controls \- preview and adjust GNOME wallpapers
+.SH SYNOPSIS
+.B wallpaper-controls
+.RI [ options ]
+.SH DESCRIPTION
+Wallpaper Controls opens a graphical editor for wallpaper sizing, image
+position, border color, light and dark images, and separate monitor images.
+Changes are staged until the user presses Apply.
+Requires GNOME with GTK 4.10 and libadwaita 1.4 or newer.
+.SH OPTIONS
+.TP
+.BI "\-\-set-wallpaper " IMAGE
+Open the editor with a local image staged for both light and dark modes.
+The user must press Apply to change the desktop.
+.TP
+.B \-\-show-background-color
+Open the editor with a visible border staged.
+.TP
+.B \-\-watch-displays
+Run the optional monitor helper, used by the app's login entry.
+.TP
+.B \-\-quit
+Ask the running application to quit. Pending edits require confirmation.
+.TP
+.BR \-\-version ", " \-V
+Print the application version.
+.TP
+.BR \-\-help ", " \-h
+Print usage information.
+.SH FILES
+Preferences are stored in
+.IR $XDG_CONFIG_HOME/wallpaper-controls/monitors.json ,
+or in ~/.config/wallpaper-controls/monitors.json when XDG_CONFIG_HOME is unset.
+Generated wallpapers are stored in
+.IR $XDG_DATA_HOME/wallpaper-controls/generated/ ,
+or in ~/.local/share/wallpaper-controls/generated/ when XDG_DATA_HOME is unset.
+Removing the package preserves these personal files.
+.SH AUTHORS
+NC4WD. See the bundled AI assistance disclosure.
+.SH BUGS
+Report issues at https://github.com/NC4WD/WallpaperControls/issues.

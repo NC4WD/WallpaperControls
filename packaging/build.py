@@ -4,6 +4,8 @@
 
 import argparse
 import ast
+from datetime import datetime, timezone
+from email.utils import format_datetime
 import gzip
 import hashlib
 import os
@@ -49,6 +51,8 @@ def main():
         parser.error("maintainer must be Name <working-email@example.com>")
     if shutil.which("dpkg-deb") is None:
         parser.error("dpkg-deb is required; on Ubuntu install dpkg")
+    if not (ROOT / ".git").exists():
+        parser.error("build from a Git checkout, or initialize and commit the extracted source first")
     if git("status", "--porcelain", "--untracked-files=normal").strip():
         parser.error("commit source changes first so the binary and source archive match")
     tree = ast.parse((ROOT / "wallpaper_controls.py").read_text())
@@ -87,8 +91,19 @@ def main():
               (ROOT / f"{APP_ID}.metainfo.xml").read_text())
         docs = package / "usr/share/doc/wallpaper-controls"
         docs.mkdir(parents=True)
-        for filename in ("README.md", "CHANGELOG.md", "AI_DISCLOSURE.md"):
-            compress(docs / f"{filename}.gz", (ROOT / filename).read_bytes(), epoch)
+        for filename, destination in (("README.md", "README.md.gz"),
+                                      ("CHANGELOG.md", "changelog.gz"),
+                                      ("AI_DISCLOSURE.md", "AI_DISCLOSURE.md.gz")):
+            compress(docs / destination, (ROOT / filename).read_bytes(), 0)
+        changelog = (
+            f"wallpaper-controls ({version}-{args.revision}) noble; urgency=medium\n\n"
+            "  * Package the reviewed application for Ubuntu 24.04 and newer.\n\n"
+            f" -- {args.maintainer}  {format_datetime(datetime.fromtimestamp(epoch, timezone.utc))}\n")
+        compress(docs / "changelog.Debian.gz", changelog.encode(), 0)
+        manual = package / "usr/share/man/man1/wallpaper-controls.1.gz"
+        manual.parent.mkdir(parents=True)
+        compress(manual, (ROOT / "packaging/wallpaper-controls.1").read_text().replace(
+            "@VERSION@", version).encode(), 0)
         write(docs / "copyright", (
             "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n"
             "Upstream-Name: Wallpaper Controls\n"
