@@ -377,7 +377,8 @@ class WallpaperWindow(Adw.ApplicationWindow):
 
         display_group = Adw.PreferencesGroup(
             title="Monitor changes",
-            description="When enabled, works with the app closed and starts at login")
+            description="If you always use the same monitor setup, you can turn this off.\n"
+                        "When enabled, works with the app closed and starts at login")
         content.append(display_group)
         self.auto_row = Adw.ActionRow(
             title="Adjust to monitor changes",
@@ -387,11 +388,6 @@ class WallpaperWindow(Adw.ApplicationWindow):
         self.auto_row.add_suffix(self.auto_switch)
         self.auto_row.set_activatable_widget(self.auto_switch)
         display_group.add(self.auto_row)
-        monitor_changes_hint = Gtk.Label(
-            label="If you always use the same monitor setup, you can turn this off.",
-            wrap=True, xalign=0, margin_top=8)
-        monitor_changes_hint.add_css_class("dim-label")
-        content.append(monitor_changes_hint)
 
         self._settings_handler = self.settings.connect("changed", self.on_settings_changed)
         self.render_draft()
