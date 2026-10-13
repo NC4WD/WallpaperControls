@@ -8,7 +8,7 @@ name must remain `WallpaperControls` to match the application ID
 ## GitHub release
 
 1. Review the source, metadata, and [AI disclosure](AI_DISCLOSURE.md).
-2. Run `/usr/bin/python3 -m pytest -q` and
+2. Run `dbus-run-session -- xvfb-run -a /usr/bin/python3 -m pytest -q` and
    `appstreamcli validate --no-net io.github.nc4wd.WallpaperControls.metainfo.xml`.
 3. Test `./install.sh`, the app window, the Files action, and `./uninstall.sh`
    on a clean GNOME user account. Test the per-monitor result with two physical
@@ -18,10 +18,45 @@ name must remain `WallpaperControls` to match the application ID
    suite covers simulated display layouts and cannot replace these physical
    display checks. Verify Undo restores both appearances and the chosen color.
 4. Push the reviewed source to the public GitHub repository.
-5. Review the real app screenshot in `assets/screenshots/` and update its
-   AppStream URL to point to the release tag.
+5. Review the real app screenshots in `assets/screenshots/`. Set the release
+   date in AppStream and the changelog to the publication date, and update
+   screenshot URLs to point to the release tag.
 6. Tag the reviewed version and publish a GitHub release. Make sure the
    screenshot URL in AppStream resolves from that tag.
+
+## Release audit — 2026-10-13
+
+The 0.2.0 candidate received a source, settings, image-rendering, helper,
+installer, and metadata audit. The audit fixed save rollback and image retention,
+malformed preferences, tiny-tile performance, oversized image handling, native
+color-only backgrounds, dark-image fallback, update shutdown, and launcher
+escaping. Regression checks cover these paths, including simulated failed saves.
+
+Validation uses temporary preferences, a memory settings backend, and disposable
+install folders. A clean Ubuntu 24.04 container checks the minimum supported
+desktop libraries; it uses a virtual display and does not run GNOME Shell.
+
+| Check | Result |
+| --- | --- |
+| Full suite on Ubuntu 26.04, GTK 4.22 / libadwaita 1.9 | 64 passed |
+| Full suite in a clean Ubuntu 24.04 container, GTK 4.14 / libadwaita 1.5 | 64 passed |
+| Final image-input checks on Ubuntu 26.04, including a nonlocal URI rejection added after the full runs | 9 passed |
+| AppStream metadata, desktop entries, source and installer syntax | Passed |
+| Clean install, installed version command, and uninstall on Ubuntu 24.04 | Passed |
+
+The suites report desktop-library deprecation warnings, with no failed tests.
+These APIs remain compatible with the minimum supported libraries. Physical
+monitor and login checks remain outstanding.
+
+**Still required before publication:** test two physical monitors in a real
+GNOME session. Cover different light/dark images, Apply and Restore Previous
+Wallpaper, monitor numbers, mixed display scales, unplug/replug, rearrangement,
+the helper after closing the window, and helper startup after login. Also check
+the Files action and keyboard navigation in that session. Automated tests do
+not establish the real compositor result or login behavior.
+
+The v0.2.0 screenshot URLs will only resolve after the reviewed candidate has
+been pushed and tagged. No release or Flathub submission is part of this audit.
 
 ## Flathub status
 

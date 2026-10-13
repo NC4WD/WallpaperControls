@@ -8,7 +8,7 @@ settings panels and shows a preview before anything changes.
 
 ## Features
 
-- Fill screen, Fit image, Stretch, Original size, Tile, and Span monitors
+- Fill screen, Fit image, Stretch, Original size, Tile, Span monitors, and Color only
 - Separate wallpaper images for light and dark mode
 - A background color and adjustable border size, including for images that match the screen shape
 - A different image on each connected monitor, composed into a single spanned wallpaper
@@ -21,10 +21,14 @@ settings panels and shows a preview before anything changes.
 
 ## Install on Ubuntu
 
+Requires **Ubuntu 24.04 or newer with GNOME**, or another GNOME system with
+GTK 4.10 and libadwaita 1.4 or newer. Ubuntu 22.04's standard libraries are too
+old. The installer checks these requirements before copying any files.
+
 Install the system packages:
 
 ```sh
-sudo apt install python3-gi python3-pil gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-gdkpixbuf-2.0
+sudo apt install python3-gi python3-gi-cairo python3-pil gir1.2-gtk-4.0 gir1.2-adw-1 gir1.2-gdkpixbuf-2.0 gsettings-desktop-schemas librsvg2-common webp-pixbuf-loader
 ```
 
 From this folder, run:
@@ -38,6 +42,11 @@ user account and does not require `sudo`. You can also run `./run.sh` without
 installing. To remove the app, run `./uninstall.sh`; it keeps your wallpaper
 images and preferences so your current desktop image does not disappear.
 
+To update, download the new version and run `./install.sh` again. If the app is
+running, choose **Quit** from its menu and reopen it to load the update. Quit
+asks before discarding pending edits. Closing the window may leave the optional
+display helper running; Quit stops it until the app next opens or you log in.
+
 ## How to use it
 
 Choose **Light mode** or **Dark mode**, select an image, and adjust its sizing. The
@@ -46,6 +55,12 @@ you are happy with the result, or **Discard Changes** to discard the edits. **Us
 Small, Medium, or Large **Border width** when you want the color to remain
 visible even if the image already matches or fills the screen. When you choose
 a color while the image covers the display, the app selects Medium for you.
+Choose **Color only** to fill the screen with that color without an image.
+Borders are measured around the whole screen; GNOME's top bar and dock may
+cover part of a border, making the visible edges look unequal.
+
+If GNOME has no separate dark image saved, the app previews the light image in
+dark mode and labels it **Same as light mode**, matching GNOME's behavior.
 
 Use **Image position** to choose which edge or corner stays visible with Fill,
 Fit, Original size, or Span. Position and sizing apply to both modes and to
@@ -99,15 +114,18 @@ is enabled for a generated wallpaper, its login entry is stored in
 - With automatic rebuilding disabled, reopen the app and press **Apply**
   after changing the display arrangement.
 - The single-image preview uses the first connected display's size.
-- Per-monitor composition uses Pillow's supported raster image formats. PNG,
-  JPEG, WebP, GIF, BMP, and TIFF are supported on typical Ubuntu installations;
-  SVG uses GTK's image decoder. GNOME slideshow XML files cannot be composed.
+- PNG, JPEG, WebP, GIF, BMP, TIFF, and SVG are supported with the packages above.
+  Animated images use a still frame. GNOME slideshow XML files cannot be composed.
+- Source images are limited to 64 megapixels and generated wallpapers to
+  32 megapixels across the display arrangement, including gaps between displays.
 
 ## Development and release
 
 Run `/usr/bin/python3 -m pytest -q` to check image composition, saved preferences,
-and Undo. GTK integration checks run when a display is available; use
-`xvfb-run -a env GSETTINGS_BACKEND=memory /usr/bin/python3 -m pytest -q`
+and Undo. Tests use isolated settings and temporary folders, so they do not
+change your desktop wallpaper. GTK integration checks run when a display is
+available; install `python3-pytest xvfb xauth dbus` and use
+`dbus-run-session -- xvfb-run -a /usr/bin/python3 -m pytest -q`
 to run all checks on a virtual display. See
 [RELEASING.md](RELEASING.md) for the public release process and current Flathub
 constraints. The project is licensed under

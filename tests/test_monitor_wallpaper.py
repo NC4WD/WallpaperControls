@@ -156,3 +156,56 @@ def test_hidpi_center_preview_and_wallpaper_use_the_same_natural_size(tmp_path):
     assert preview.getpixel((6, 10))[:3] == (255, 0, 0)
     assert final.getpixel((8, 20))[:3] == (0, 0, 255)
     assert final.getpixel((12, 20))[:3] == (255, 0, 0)
+
+
+def test_tiny_tiles_do_not_composite_once_for_every_screen_pixel(tmp_path, monkeypatch):
+    uri = image_uri(tmp_path / "tiny.png", "red", (1, 1))
+    monitor = MonitorSpec("one", "One", 0, 0, 400, 300)
+    original = Image.Image.alpha_composite
+    calls = []
+    def count_composites(self, *args, **kwargs):
+        calls.append(True)
+        return original(self, *args, **kwargs)
+    monkeypatch.setattr(Image.Image, "alpha_composite", count_composites)
+    result = render_composite([monitor], {"one": uri}, "wallpaper", "#000000", scale=1)
+    assert result.getpixel((399, 299))[:3] == (255, 0, 0)
+    assert len(calls) < 30, "Tiny tiles must not freeze the app with millions of composites."
+
+
+def test_oversized_centered_image_is_cropped_before_resizing(tmp_path, monkeypatch):
+    uri = image_uri(tmp_path / "large.png", "red", (120, 80))
+    monitors = [MonitorSpec("one", "One", 0, 0, 5, 5)]
+    original = Image.Image.resize
+    sizes = []
+    def count_sizes(self, size, *args, **kwargs):
+        sizes.append(size)
+        return original(self, size, *args, **kwargs)
+    monkeypatch.setattr(Image.Image, "resize", count_sizes)
+    result = render_composite(monitors, {"one": uri}, "centered", "#000000", scale=4)
+    assert result.size == (20, 20)
+    assert all(width <= 20 and height <= 20 for width, height in sizes)
+
+
+def test_pillow_image_size_rejection_becomes_a_readable_error(tmp_path, monkeypatch):
+    uri = image_uri(tmp_path / "oversize.png", "red", (20, 20))
+    monkeypatch.setattr(Image, "MAX_IMAGE_PIXELS", 100)
+    with pytest.raises(ValueError, match="image|Image"):
+        render_composite([MonitorSpec("one", "One", 0, 0, 20, 20)],
+                         {"one": uri}, "zoom", "#000000")
+
+
+def test_transparent_tiling_repeats_without_accumulating_alpha(tmp_path):
+    source = Image.new("RGBA", (2, 1), (255, 0, 0, 128))
+    source.putpixel((1, 0), (0, 0, 0, 0))
+    path = tmp_path / "transparent.png"
+    source.save(path)
+    result = render_composite([MonitorSpec("one", "One", 0, 0, 7, 5)],
+                              {"one": path.as_uri()}, "wallpaper", "blue", scale=1)
+    assert result.getpixel((0, 0)) == result.getpixel((6, 4)) == (128, 0, 127, 255)
+    assert result.getpixel((1, 0)) == result.getpixel((5, 4)) == (0, 0, 255, 255)
+
+
+def test_color_only_does_not_open_missing_images():
+    result = render_composite([MonitorSpec("one", "One", 0, 0, 7, 5)],
+                              {"one": "file:///missing.png"}, "none", "antiquewhite", scale=1)
+    assert result.getpixel((0, 0)) == (250, 235, 215, 255)

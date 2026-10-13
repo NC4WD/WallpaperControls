@@ -16,12 +16,14 @@ gi.require_version("Gtk", "4.0")
 from gi.repository import Adw, Gdk, GdkPixbuf, Gio, GLib, Gtk
 
 from monitor_wallpaper import (bounds, layout_signature, monitors_from_display,
+                               check_image_size, image_dimensions,
                                placement_covers_viewport, render_composite)
 from monitor_state import (EDITABLE_KEYS, PICTURE_KEYS, cloned, editable_settings,
                            ensure_monitor_images, load_config, merge_pending,
-                           uses_generated_wallpaper)
+                           single_image_uri, uses_generated_wallpaper)
 from wallpaper_backend import apply_wallpaper, rebuild_for_layout, undo_last_apply
 from desktop_integration import stop_running_app, sync_autostart
+from runtime_requirements import check_schemas, check_versions
 
 
 APP_ID = "io.github.nc4wd.WallpaperControls"
@@ -34,6 +36,7 @@ PLACEMENTS = (
     ("Stretch", "stretched"),
     ("Original size", "centered"),
     ("Tile", "wallpaper"),
+    ("Color only", "none"),
     ("Span monitors", "spanned"),
 )
 PLACEMENT_DESCRIPTIONS = {
@@ -42,6 +45,7 @@ PLACEMENT_DESCRIPTIONS = {
     "stretched": "Stretch the image to fill the screen",
     "centered": "Keep the original image size; large images may be cropped",
     "wallpaper": "Repeat the image to fill the screen",
+    "none": "Use the background color without a wallpaper image",
     "spanned": "Spread one image across all monitors",
 }
 PLACEMENT_KEYS = [value for _, value in PLACEMENTS]
@@ -65,6 +69,8 @@ def active_wallpaper_key():
 
 
 def image_uri_from_file(filename):
+    if filename is None:
+        raise ValueError("Choose an image stored on this computer.")
     path = Path(filename).expanduser().resolve(strict=True)
     if not path.is_file():
         raise ValueError("Choose an image file.")
@@ -72,6 +78,7 @@ def image_uri_from_file(filename):
         info = GdkPixbuf.Pixbuf.get_file_info(str(path))
         if not info[0] or info[1] <= 0 or info[2] <= 0:
             raise ValueError("This file can't be opened as an image. Choose another file.")
+        check_image_size(info[1], info[2])
         GdkPixbuf.Pixbuf.new_from_file_at_scale(str(path), 1, 1, True)
     except GLib.Error as error:
         raise ValueError("This file can't be opened as an image. Choose another file.") from error
@@ -201,6 +208,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
         self.placement_mode_is_multi = False
         self._force_close = False
         self._close_dialog_open = False
+        self._quit_requested = False
         self._identify_windows = []
         self._identify_timeout = 0
         self._settings_timeout = 0
@@ -220,6 +228,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
         menu = Gio.Menu()
         menu.append("Restore Previous Wallpaper", "win.undo")
         menu.append("Show Monitor Numbers", "win.identify")
+        menu.append("Quit", "app.quit")
         menu_button = Gtk.MenuButton(icon_name="open-menu-symbolic", menu_model=menu)
         menu_button.set_tooltip_text("More options")
         header.pack_end(menu_button)
@@ -386,9 +395,11 @@ class WallpaperWindow(Adw.ApplicationWindow):
         return {key: self.settings.get_string(key) for key in EDITABLE_KEYS}
 
     def has_changes(self):
+        return self.has_pending_edits() or self.layout_dirty
+
+    def has_pending_edits(self):
         return (self.draft != editable_settings(self.saved, self.config_saved) or
-                self.config_draft != self.config_saved
-                or self.layout_dirty)
+                self.config_draft != self.config_saved)
 
     @staticmethod
     def uses_generated_wallpaper(config):
@@ -431,10 +442,12 @@ class WallpaperWindow(Adw.ApplicationWindow):
         self.monitors_group.set_visible(multi)
         self.drop_hint.set_text("Drop an image onto a monitor below or in the preview, then press Apply"
                                 if multi else "Drop an image here, then press Apply")
-        uri = self.config_draft["single"][self.selected_key]
+        uri = single_image_uri(self.config_draft, self.selected_key)
         path = file_from_uri(uri)
-        self.image_row.set_subtitle(Path(path).name if path else
-                                    ("No image selected" if not uri else uri))
+        filename = Path(path).name if path else ("No image selected" if not uri else uri)
+        if self.selected_key == "picture-uri-dark" and not self.config_draft["single"][self.selected_key] and uri:
+            filename += " · Same as light mode"
+        self.image_row.set_subtitle(filename)
         source_mode = "light" if self.selected_key == "picture-uri" else "dark"
         destination = "dark" if self.selected_key == "picture-uri" else "light"
         if multi:
@@ -456,6 +469,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
         options = PLACEMENT_KEYS[:-1] if multi else PLACEMENT_KEYS
         self.placement_dropdown.set_selected(options.index(placement) if placement in options else 0)
         self.placement_row.set_subtitle(PLACEMENT_DESCRIPTIONS.get(placement, "Choose how the image fills the screen"))
+        self.border_row.set_sensitive(placement != "none")
         alignments = [key for _label, key in ALIGNMENT_CHOICES]
         self.alignment_dropdown.set_selected(alignments.index(alignment))
         self.alignment_row.set_sensitive(placement in ("zoom", "scaled", "centered", "spanned"))
@@ -481,7 +495,9 @@ class WallpaperWindow(Adw.ApplicationWindow):
         self.color_button.set_rgba(color)
         self.color_value_label.set_text("#{:02X}{:02X}{:02X}".format(
             round(color.red * 255), round(color.green * 255), round(color.blue * 255)))
-        if border > 0:
+        if placement == "none":
+            self.color_row.set_subtitle("Fills the whole screen")
+        elif border > 0:
             self.color_row.set_subtitle("Fills the border around the image")
         elif placement in ("zoom", "stretched", "spanned"):
             self.color_row.set_subtitle("Add a border below to make this color visible")
@@ -561,7 +577,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
         if not path or not os.path.isfile(path):
             return False
         try:
-            _format, width, height = GdkPixbuf.Pixbuf.get_file_info(path)
+            width, height = image_dimensions(uri)
         except (GLib.Error, TypeError, ValueError):
             return False
         if width <= 0 or height <= 0 or not self.monitor_specs:
@@ -571,6 +587,8 @@ class WallpaperWindow(Adw.ApplicationWindow):
             for monitor in self.monitor_specs)
 
     def background_is_hidden(self, uri, placement):
+        if not uri:
+            return False
         if placement in ("zoom", "stretched", "spanned"):
             return True
         if placement == "scaled":
@@ -581,7 +599,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
         if not path or not os.path.isfile(path):
             return False
         try:
-            _format, width, height = GdkPixbuf.Pixbuf.get_file_info(path)
+            width, height = image_dimensions(uri)
         except (GLib.Error, TypeError, ValueError):
             return False
         return bool(self.monitor_specs) and all(placement_covers_viewport(
@@ -646,7 +664,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
         image_filter.set_name("Supported images" if raster_only else "Images")
         if raster_only:
             for mime_type in ("image/png", "image/jpeg", "image/webp", "image/gif",
-                              "image/bmp", "image/tiff"):
+                              "image/bmp", "image/tiff", "image/svg+xml"):
                 image_filter.add_mime_type(mime_type)
         else:
             image_filter.add_mime_type("image/*")
@@ -693,6 +711,12 @@ class WallpaperWindow(Adw.ApplicationWindow):
                 self.config_draft["single"][key] = uri
             else:
                 self.config_draft["images"][key][connector] = uri
+            if self.config_draft["enabled"]:
+                if self.config_draft["placement"] == "none":
+                    self.config_draft["placement"] = "zoom"
+            elif self.config_draft["single"]["picture-options"] == "none":
+                self.config_draft["single"]["picture-options"] = "zoom"
+                self.draft["picture-options"] = "zoom"
             self.error_message = ""
             self.render_draft()
             return True
@@ -782,13 +806,15 @@ class WallpaperWindow(Adw.ApplicationWindow):
         if self.config_draft["enabled"]:
             self.config_draft["images"][other_key] = self.config_draft["images"][self.selected_key].copy()
         else:
-            uri = self.config_draft["single"][self.selected_key]
+            uri = single_image_uri(self.config_draft, self.selected_key)
             self.draft[other_key] = uri
             self.config_draft["single"][other_key] = uri
         self.render_draft()
 
     def stage_image_for_both(self, uri):
         self.config_draft["enabled"] = False
+        if self.config_draft["single"]["picture-options"] == "none":
+            self.config_draft["single"]["picture-options"] = "zoom"
         for key in PICTURE_KEYS:
             self.draft[key] = uri
             self.config_draft["single"][key] = uri
@@ -806,6 +832,9 @@ class WallpaperWindow(Adw.ApplicationWindow):
                 else:
                     self.draft["picture-options"] = options[index][1]
                     self.config_draft["single"]["picture-options"] = options[index][1]
+                if options[index][1] == "none":
+                    self.config_draft["border"] = 0.0
+                    self.config_draft["alignment"] = "center"
                 self.render_draft()
 
     def on_color_changed(self, *_args):
@@ -854,7 +883,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
         about.present()
 
     def on_close_request(self, _window):
-        if self._force_close or not self.has_changes():
+        if self._force_close or not self.has_pending_edits():
             return False
         if self._close_dialog_open:
             return True
@@ -873,8 +902,13 @@ class WallpaperWindow(Adw.ApplicationWindow):
     def on_close_response(self, _dialog, response):
         self._close_dialog_open = False
         if response == "discard":
+            if self._quit_requested:
+                self.get_application().quit()
+                return
             self._force_close = True
             self.close()
+        else:
+            self._quit_requested = False
 
     def on_apply(self, _button):
         if not self.has_changes():
@@ -934,8 +968,11 @@ class WallpaperApp(Adw.Application):
     def do_startup(self):
         Adw.Application.do_startup(self)
         quit_action = Gio.SimpleAction.new("quit", None)
-        quit_action.connect("activate", lambda *_args: self.quit())
+        quit_action.connect("activate", self.request_quit)
         self.add_action(quit_action)
+        force_quit_action = Gio.SimpleAction.new("force-quit", None)
+        force_quit_action.connect("activate", lambda *_args: self.quit())
+        self.add_action(force_quit_action)
         self.desktop_settings = Gio.Settings.new(BACKGROUND_SCHEMA)
         self._desktop_handler = self.desktop_settings.connect("changed", self.on_desktop_settings_changed)
         self.monitor_model = Gdk.Display.get_default().get_monitors()
@@ -952,6 +989,14 @@ class WallpaperApp(Adw.Application):
     def main_window(self):
         return next((window for window in self.get_windows()
                      if isinstance(window, WallpaperWindow)), None)
+
+    def request_quit(self, *_args):
+        window = self.main_window()
+        if window and window.has_pending_edits():
+            window._quit_requested = True
+            window.on_close_request(window)
+        else:
+            self.quit()
 
     def connect_display_signals(self):
         for monitor, handler in self._monitor_signals:
@@ -1112,6 +1157,14 @@ def main(argv=None):
         print("Usage: wallpaper-controls [--set-wallpaper IMAGE] [--show-background-color]",
               file=sys.stderr)
         return 2
+    try:
+        check_versions((Gtk.get_major_version(), Gtk.get_minor_version()),
+                       (Adw.get_major_version(), Adw.get_minor_version()))
+        check_schemas(Gio.SettingsSchemaSource.get_default())
+        gi.require_foreign("cairo")
+    except (ImportError, ValueError) as error:
+        print(f"Wallpaper Controls: {error}", file=sys.stderr)
+        return 1
     return WallpaperApp().run(arguments)
 
 

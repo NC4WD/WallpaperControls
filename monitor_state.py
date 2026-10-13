@@ -16,11 +16,19 @@ from monitor_wallpaper import ALIGNMENTS, layout_signature, render_composite
 PICTURE_KEYS = ("picture-uri", "picture-uri-dark")
 EDITABLE_KEYS = (*PICTURE_KEYS, "picture-options", "primary-color",
                  "secondary-color", "color-shading-type")
+NATIVE_PLACEMENTS = ("none", "zoom", "scaled", "stretched", "centered", "wallpaper", "spanned")
 
 
 def uses_generated_wallpaper(config):
+    if not config["enabled"] and config["single"]["picture-options"] == "none":
+        return False
     return (config["enabled"] or config.get("border", 0.0) > 0 or
             config.get("alignment", "center") != "center")
+
+
+def single_image_uri(config, key):
+    """GNOME uses the light image when no separate dark image is selected."""
+    return config["single"][key] or (config["single"]["picture-uri"] if key == "picture-uri-dark" else "")
 
 
 def editable_settings(settings_values, config):
@@ -85,15 +93,19 @@ def default_config(settings_values):
 def valid_snapshot_config(config):
     if not isinstance(config, dict):
         return False
-    single, images = config.get("single"), config.get("images")
+    single, images, generated = config.get("single"), config.get("images"), config.get("generated")
     border = config.get("border")
     return (config.get("version") == 1 and isinstance(config.get("enabled"), bool) and
             isinstance(config.get("auto_rebuild"), bool) and
-            config.get("alignment") in ALIGNMENTS and
-            config.get("placement") in ("zoom", "scaled", "stretched", "centered", "wallpaper") and
-            isinstance(border, (int, float)) and math.isfinite(border) and 0 <= border <= 0.25 and
+            isinstance(config.get("alignment"), str) and config["alignment"] in ALIGNMENTS and
+            config.get("placement") in ("none", "zoom", "scaled", "stretched", "centered", "wallpaper") and
+            isinstance(border, (int, float)) and 0 <= border <= 0.25 and math.isfinite(border) and
             isinstance(config.get("layout"), str) and isinstance(single, dict) and
             all(isinstance(single.get(key), str) for key in (*PICTURE_KEYS, "picture-options")) and
+            single["picture-options"] in NATIVE_PLACEMENTS and
+            isinstance(generated, dict) and
+            all(isinstance(generated.get(key), str) for key in PICTURE_KEYS) and
+            config.get("undo") is None and
             isinstance(images, dict) and all(isinstance(images.get(key), dict) and
                 all(isinstance(k, str) and isinstance(v, str) for k, v in images[key].items())
                 for key in PICTURE_KEYS))
@@ -112,18 +124,19 @@ def load_config(settings_values):
                         str(k): str(v) for k, v in loaded["images"][key].items()
                         if isinstance(k, str) and isinstance(v, str)
                     }
-        if loaded.get("placement") in ("zoom", "scaled", "stretched", "centered", "wallpaper"):
+        if loaded.get("placement") in ("none", "zoom", "scaled", "stretched", "centered", "wallpaper"):
             config["placement"] = loaded["placement"]
-        if loaded.get("alignment") in ALIGNMENTS:
+        if isinstance(loaded.get("alignment"), str) and loaded["alignment"] in ALIGNMENTS:
             config["alignment"] = loaded["alignment"]
         if isinstance(loaded.get("auto_rebuild"), bool):
             config["auto_rebuild"] = loaded["auto_rebuild"]
         border = loaded.get("border", 0.0)
-        if isinstance(border, (int, float)) and math.isfinite(border) and 0 <= border <= 0.25:
+        if isinstance(border, (int, float)) and 0 <= border <= 0.25 and math.isfinite(border):
             config["border"] = float(border)
         if isinstance(loaded.get("single"), dict):
             for key in config["single"]:
-                if isinstance(loaded["single"].get(key), str):
+                if (isinstance(loaded["single"].get(key), str) and
+                        (key != "picture-options" or loaded["single"][key] in NATIVE_PLACEMENTS)):
                     config["single"][key] = loaded["single"][key]
         if isinstance(loaded.get("generated"), dict):
             for key in PICTURE_KEYS:
@@ -131,10 +144,10 @@ def load_config(settings_values):
                     config["generated"][key] = loaded["generated"][key]
         if isinstance(loaded.get("layout"), str):
             config["layout"] = loaded["layout"]
-        requested_multi = bool(loaded.get("enabled"))
+        requested_multi = loaded.get("enabled") is True
         generated_active = (requested_multi or config["border"] > 0 or
                             config["alignment"] != "center") and all(
-            settings_values[key] == config["generated"][key]
+            bool(config["generated"][key]) and settings_values[key] == config["generated"][key]
             for key in PICTURE_KEYS) and settings_values["picture-options"] == "spanned"
         config["enabled"] = requested_multi and generated_active
         if not generated_active:
@@ -150,23 +163,35 @@ def load_config(settings_values):
                     for key in EDITABLE_KEYS) and
                 valid_snapshot_config(undo["config"])):
             config["undo"] = undo
-    except (OSError, ValueError, TypeError, AttributeError):
+    except (OSError, ValueError, TypeError, AttributeError, RecursionError, OverflowError):
         pass
     return config
 
 
 def save_config(config):
+    contents = (json.dumps(config, indent=2, sort_keys=True, allow_nan=False) + "\n").encode("utf-8")
+    write_config_bytes(contents)
+
+
+def write_config_bytes(contents):
+    """Atomically write preferences, or restore the absence of a config file."""
     path = config_path()
+    if contents is None:
+        path.unlink(missing_ok=True)
+        return
     path.parent.mkdir(parents=True, exist_ok=True)
-    with tempfile.NamedTemporaryFile(mode="w", encoding="utf-8", dir=path.parent,
-                                     prefix=".monitors-", suffix=".json", delete=False) as stream:
-        temp_path = Path(stream.name)
-        json.dump(config, stream, indent=2, sort_keys=True)
-        stream.write("\n")
+    temp_path = None
     try:
+        with tempfile.NamedTemporaryFile(mode="wb", dir=path.parent,
+                                         prefix=".monitors-", suffix=".json", delete=False) as stream:
+            temp_path = Path(stream.name)
+            stream.write(contents)
+            stream.flush()
+            os.fsync(stream.fileno())
         os.replace(temp_path, path)
     finally:
-        temp_path.unlink(missing_ok=True)
+        if temp_path is not None:
+            temp_path.unlink(missing_ok=True)
 
 
 def generate_wallpapers(monitors, config, color):

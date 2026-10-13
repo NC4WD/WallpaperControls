@@ -5,9 +5,9 @@ from pathlib import Path
 from urllib.parse import unquote, urlparse
 
 from monitor_state import (EDITABLE_KEYS, PICTURE_KEYS, clean_old_wallpapers,
-                           cloned, ensure_monitor_images, generate_wallpapers,
-                           load_config, retained_wallpapers, save_config,
-                           uses_generated_wallpaper)
+                           cloned, config_path, ensure_monitor_images, generate_wallpapers,
+                           load_config, retained_wallpapers, save_config, single_image_uri,
+                           uses_generated_wallpaper, write_config_bytes)
 from monitor_wallpaper import layout_signature
 
 SETTING_NAMES = {
@@ -19,13 +19,21 @@ SETTING_NAMES = {
     "color-shading-type": "the background color style",
 }
 
+
+class WallpaperSaveError(ValueError):
+    """Keep generated images if a failed settings rollback cannot be verified."""
+
+
 def read_settings(settings):
     return {key: settings.get_string(key) for key in EDITABLE_KEYS}
 
 
 def _commit(settings, values, config, sync):
     previous_values = read_settings(settings)
-    previous_config = load_config(previous_values)
+    try:
+        previous_contents = config_path().read_bytes()
+    except FileNotFoundError:
+        previous_contents = None
     changes = {key: values[key] for key in EDITABLE_KEYS
                if values[key] != previous_values[key]}
     for key in changes:
@@ -42,14 +50,34 @@ def _commit(settings, values, config, sync):
         settings.apply()
         if sync:
             sync()
-    except Exception:
+        actual = read_settings(settings)
+        if actual != values:
+            raise ValueError("Your wallpaper settings weren't saved completely. Please try again.")
+    except Exception as error:
         settings.revert()
-        if config_written:
-            save_config(previous_config)
-        raise
-    actual = read_settings(settings)
-    if actual != values:
-        raise ValueError("Your wallpaper settings weren't saved completely. Please try again.")
+        try:
+            # revert() only discards pending writes. Once Apply has happened,
+            # explicitly restore values that reached the settings backend.
+            restore = {key: value for key, value in previous_values.items()
+                       if settings.get_string(key) != value}
+            if restore:
+                settings.delay()
+                for key, value in restore.items():
+                    if not settings.is_writable(key) or not settings.set_string(key, value):
+                        raise ValueError("The previous wallpaper couldn't be restored.")
+                settings.apply()
+                if sync:
+                    sync()
+            if read_settings(settings) != previous_values:
+                raise ValueError("The previous wallpaper couldn't be restored.")
+            if config_written:
+                write_config_bytes(previous_contents)
+        except Exception as rollback_error:
+            settings.revert()
+            raise WallpaperSaveError(
+                "The wallpaper change failed and couldn't be fully undone. "
+                "Your image files were kept. Reopen the app and check your wallpaper.") from rollback_error
+        raise error
     try:
         clean_old_wallpapers(retained_wallpapers(actual, config))
     except OSError:
@@ -66,8 +94,7 @@ def apply_wallpaper(settings, monitors, values, config, *, record_undo=True, syn
         render_config = cloned(next_config)
         if not render_config["enabled"]:
             render_config["images"] = {
-                key: {monitor.connector: (next_config["single"][key] or
-                                          next_config["single"]["picture-uri"])
+                key: {monitor.connector: single_image_uri(next_config, key)
                       for monitor in monitors} for key in PICTURE_KEYS}
             render_config["placement"] = next_config["single"]["picture-options"]
         generated, signature = generate_wallpapers(monitors, render_config,
@@ -88,8 +115,17 @@ def apply_wallpaper(settings, monitors, values, config, *, record_undo=True, syn
         next_config["undo"]["applied"] = next_values.copy()
     try:
         return _commit(settings, next_values, next_config, sync)
+    except WallpaperSaveError:
+        # The desktop may still reference either set of files. Preserve both.
+        raise
     except Exception:
-        clean_old_wallpapers(retained_wallpapers(previous_values, load_config(previous_values)))
+        try:
+            actual = read_settings(settings)
+            keep = retained_wallpapers(actual, load_config(actual))
+            keep.extend(retained_wallpapers(previous_values, previous_config))
+            clean_old_wallpapers(keep)
+        except OSError:
+            pass
         raise
 
 
@@ -102,7 +138,7 @@ def undo_last_apply(settings, monitors, *, sync=None):
     previous = cloned(undo["config"])
     previous["undo"] = None
     # Rebuild the old choices if the display layout changed since Apply.
-    missing_generated = any(
+    missing_generated = undo["settings"]["picture-options"] != "none" and any(
         urlparse(undo["settings"][key]).scheme == "file" and
         not Path(unquote(urlparse(undo["settings"][key]).path)).is_file()
         for key in PICTURE_KEYS)

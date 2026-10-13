@@ -15,7 +15,7 @@ app = data / "wallpaper-controls"
 if (app / "desktop_integration.py").is_file() and "WALLPAPER_CONTROLS_INSTALL_HOME" not in os.environ:
     sys.path.insert(0, str(app))
     from desktop_integration import stop_running_app
-    stop_running_app()
+    stop_running_app(force=True)
 desktop_dir = data / "applications"
 paths = [
     home / ".local/bin/wallpaper-controls",
@@ -27,7 +27,7 @@ paths = [
     Path(os.environ.get("XDG_CONFIG_HOME", home / ".config")) / "autostart" / f"{app_id}.desktop",
     *(app / filename for filename in (
         "wallpaper_controls.py", "monitor_wallpaper.py", "monitor_state.py",
-        "wallpaper_backend.py", "desktop_integration.py", "LICENSE")),
+        "wallpaper_backend.py", "desktop_integration.py", "runtime_requirements.py", "LICENSE")),
 ]
 for path in paths:
     path.unlink(missing_ok=True)

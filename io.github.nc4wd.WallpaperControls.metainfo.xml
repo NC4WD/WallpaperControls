@@ -7,7 +7,7 @@
   <summary>Choose how wallpapers appear on GNOME desktops</summary>
   <description>
     <p>Choose how your wallpaper fits the screen: fill it, show the whole image, stretch it, keep its original size, tile it, or spread it across your monitors. Preview changes before pressing Apply.</p>
-    <p>Use different images in light and dark mode or give each monitor its own wallpaper. Choose the image position, background color, and border width.</p>
+    <p>Use different images in light and dark mode or give each monitor its own wallpaper. Choose the image position, background color, and border width, or use a solid color without an image.</p>
     <p>Drop an image from Files to preview it. Discard Changes clears edits you haven't applied, and Restore Previous Wallpaper undoes your last wallpaper change. Show monitor numbers to identify your screens and automatically adjust saved wallpapers when your monitor setup changes.</p>
   </description>
   <developer id="io.github.nc4wd">
@@ -27,9 +27,9 @@
     </screenshot>
   </screenshots>
   <releases>
-    <release version="0.2.0" date="2026-10-12">
+    <release version="0.2.0" date="2026-10-13">
       <description>
-        <p>Add Undo Last Apply, image alignment, display identification, automatic display rebuilding, and drag and drop.</p>
+        <p>Add Restore Previous Wallpaper, image position, monitor numbers, automatic monitor adjustments, drag and drop, and color-only backgrounds. Improve save recovery, image handling, and installation checks.</p>
       </description>
     </release>
     <release version="0.1.5" date="2026-10-11">

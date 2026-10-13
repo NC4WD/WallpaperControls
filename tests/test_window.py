@@ -162,3 +162,62 @@ def test_application_coalesces_display_events_and_runs_after_window_closes(windo
     app.rebuild_applied_layout()
     current = {key: app.desktop_settings.get_string(key) for key in wc.EDITABLE_KEYS}
     assert load_config(current)["layout"] == layout_signature(changed)
+
+
+def test_empty_dark_wallpaper_preview_uses_light_mode_fallback(window):
+    window.settings.set_string("picture-uri-dark", "")
+    window.settings.apply()
+    window.reset_saved()
+    window.mode_dropdown.set_selected(1)
+    pixbuf = window.preview.pixbuf
+    pixels = pixbuf.get_pixels()
+    offset = (pixbuf.get_height() // 2 * pixbuf.get_rowstride() +
+              pixbuf.get_width() // 2 * pixbuf.get_n_channels())
+    assert tuple(pixels[offset:offset + 3]) != (0, 0, 0)
+
+
+def test_color_only_background_can_be_edited_and_receive_a_wallpaper(window):
+    original_image = window.config_draft["single"]["picture-uri"]
+    for key in ("picture-uri", "picture-uri-dark"):
+        window.settings.set_string(key, "")
+    window.settings.set_string("picture-options", "none")
+    window.settings.apply()
+    window.reset_saved()
+    assert window.placement_dropdown.get_selected() == wc.PLACEMENT_KEYS.index("none")
+    assert window.preview.pixbuf is not None
+    assert not window.hint.get_visible()
+    assert not window.border_row.get_sensitive()
+    color = Gdk.RGBA()
+    color.parse("#FF0000")
+    window.color_button.set_rgba(color)
+    window.on_apply(None)
+    assert window.saved["picture-options"] == "none"
+    assert not window.error_message
+    window.stage_image_for_both(original_image)
+    assert window.draft["picture-options"] == "zoom"
+    assert window.saved["picture-options"] == "none"
+
+
+def test_quit_prompts_before_discarding_pending_edits(window, monkeypatch):
+    app = window.get_application()
+    quit_calls = []
+    monkeypatch.setattr(app, "quit", lambda: quit_calls.append(True))
+    window.alignment_dropdown.set_selected(4)
+    app.request_quit()
+    assert window._close_dialog_open
+    assert not quit_calls
+    dialog = next(w for w in Gtk.Window.list_toplevels()
+                  if isinstance(w, wc.Adw.MessageDialog) and
+                  w.get_transient_for() is window and w.get_visible())
+    dialog.response("keep")
+    drain_events()
+    assert window.has_pending_edits()
+    assert not window._quit_requested
+    assert not quit_calls
+    app.request_quit()
+    dialog = next(w for w in Gtk.Window.list_toplevels()
+                  if isinstance(w, wc.Adw.MessageDialog) and
+                  w.get_transient_for() is window and w.get_visible())
+    dialog.response("discard")
+    drain_events()
+    assert quit_calls == [True]

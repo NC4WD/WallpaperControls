@@ -13,12 +13,13 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y appstream desktop-file-utils gir1.2-adw-1 \
-            gir1.2-gdkpixbuf-2.0 gir1.2-gtk-4.0 gsettings-desktop-schemas python3-gi python3-pil python3-pytest xvfb
+            gir1.2-gdkpixbuf-2.0 gir1.2-gtk-4.0 gsettings-desktop-schemas librsvg2-common \
+            webp-pixbuf-loader python3-gi python3-gi-cairo python3-pil python3-pytest xvfb xauth dbus
       - name: Check source and metadata
         run: |
           sh -n install.sh uninstall.sh run.sh
-          /usr/bin/python3 -m py_compile wallpaper_controls.py monitor_wallpaper.py monitor_state.py wallpaper_backend.py desktop_integration.py
-          xvfb-run -a env GSETTINGS_BACKEND=memory /usr/bin/python3 -m pytest -q
+          /usr/bin/python3 -m py_compile wallpaper_controls.py monitor_wallpaper.py monitor_state.py wallpaper_backend.py desktop_integration.py runtime_requirements.py
+          dbus-run-session -- xvfb-run -a env GSETTINGS_BACKEND=memory /usr/bin/python3 -m pytest -q
           appstreamcli validate --no-net io.github.nc4wd.WallpaperControls.metainfo.xml
       - name: Check clean user install
         run: |

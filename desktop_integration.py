@@ -5,22 +5,25 @@ import os
 from pathlib import Path
 import sys
 
-from monitor_state import uses_generated_wallpaper
-
 
 APP_ID = "io.github.nc4wd.WallpaperControls"
 
 
-def stop_running_app():
+def stop_running_app(*, force=False, application_id=APP_ID):
     """Stop an existing helper without starting a GTK process at uninstall."""
     try:
         import gi
         gi.require_version("Gio", "2.0")
         from gi.repository import Gio, GLib
         bus = Gio.bus_get_sync(Gio.BusType.SESSION, None)
-        bus.call_sync(APP_ID, "/" + APP_ID.replace(".", "/"), "org.gtk.Actions", "Activate",
-                      GLib.Variant("(sava{sv})", ("quit", [], {})), None,
-                      Gio.DBusCallFlags.NO_AUTO_START, 1000, None)
+        path = "/" + application_id.replace(".", "/")
+        actions = bus.call_sync(application_id, path, "org.gtk.Actions", "DescribeAll",
+                                None, None, Gio.DBusCallFlags.NO_AUTO_START, 1000, None).unpack()[0]
+        action = "force-quit" if force and "force-quit" in actions else "quit"
+        if action in actions:
+            bus.call_sync(application_id, path, "org.gtk.Actions", "Activate",
+                          GLib.Variant("(sava{sv})", (action, [], {})), None,
+                          Gio.DBusCallFlags.NO_AUTO_START, 1000, None)
     except (ImportError, ValueError):
         return
     except Exception:
@@ -28,14 +31,22 @@ def stop_running_app():
         return
 
 
-def _exec_quote(value):
+def desktop_exec_quote(value):
+    """Escape both the Exec argument quoting and desktop-file string layers."""
     value = str(value).replace("%", "%%")
     for character in ('\\', '"', '$', '`'):
         value = value.replace(character, '\\' + character)
+    value = desktop_string_escape(value)
     return '"' + value + '"'
 
 
+def desktop_string_escape(value):
+    return (str(value).replace('\\', '\\\\').replace('\n', '\\n')
+            .replace('\r', '\\r').replace('\t', '\\t'))
+
+
 def sync_autostart(config, script=None):
+    from monitor_state import uses_generated_wallpaper
     root = Path(os.environ.get("XDG_CONFIG_HOME", Path.home() / ".config"))
     path = root / "autostart" / f"{APP_ID}.desktop"
     enabled = config["auto_rebuild"] and uses_generated_wallpaper(config)
@@ -46,7 +57,7 @@ def sync_autostart(config, script=None):
         script = Path(__file__).resolve().with_name("wallpaper_controls.py")
     text = ("[Desktop Entry]\nType=Application\nName=Wallpaper Controls Display Helper\n"
             "Comment=Keep applied wallpapers aligned when displays change\n"
-            f"Exec={_exec_quote(sys.executable)} {_exec_quote(script)} --watch-displays\n"
+            f"Exec={desktop_exec_quote(sys.executable)} {desktop_exec_quote(script)} --watch-displays\n"
             "NoDisplay=true\nOnlyShowIn=GNOME;Unity;\nX-GNOME-Autostart-enabled=true\n")
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_suffix(".desktop.tmp")

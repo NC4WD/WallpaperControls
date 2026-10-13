@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.0 — 2026-10-12
+## 0.2.0 — Unreleased
 
 - Simplified labels, instructions, and error messages. Discard Changes and Restore Previous Wallpaper now clearly distinguish unapplied edits from undoing the last change. Light and dark modes, image sizing, monitor numbers, and automatic monitor adjustments use consistent wording.
 - Added Undo Last Apply, including restoration after reopening the app and retention of the previous generated wallpaper files.
@@ -10,6 +10,12 @@
 - Added drag and drop onto the preview, image row, or individual monitor rows. Dropped images are staged until Apply; unsupported files and multiple-file drops show a clear error.
 - Preserved pending edits during automatic rebuilds and stopped rebuilding when another app changes the desktop wallpaper.
 - Fixed Center and Tile sizing on scaled displays and added GTK integration checks to continuous integration.
+- Added Color only and matched GNOME's fallback to the light image when no separate dark image is saved.
+- Fixed failed and partial saves to restore the previous settings and preferences. Keep generated image files if recovery cannot be verified.
+- Fixed tiny tiled images that could freeze the app and oversized centered images that could allocate unnecessary memory. Added image size limits and clearer errors.
+- Hardened preference and Undo loading against damaged files and respected camera image orientation when deciding whether a border is visible.
+- Added Quit with pending-edit confirmation, and verified display-helper shutdown and desktop launchers with special characters in their paths.
+- Documented Ubuntu 24.04 as the minimum supported Ubuntu version, checked desktop libraries and GNOME schemas before install, and included the Cairo, SVG, and WebP dependencies.
 
 ## 0.1.5 — 2026-10-11
 

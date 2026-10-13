@@ -6,7 +6,7 @@ import pytest
 from PIL import Image
 
 from desktop_integration import sync_autostart
-from monitor_state import (default_config, generated_dir, load_config,
+from monitor_state import (config_path, default_config, generated_dir, load_config,
                            merge_pending, save_config)
 from monitor_wallpaper import MonitorSpec
 from wallpaper_backend import apply_wallpaper, rebuild_for_layout, undo_last_apply
@@ -213,3 +213,94 @@ def test_undo_rebuilds_a_missing_generated_file(desktop):
     values, restored = undo_last_apply(settings, monitors)
     assert restored["border"] == 0.03
     assert path_from_uri(values["picture-uri"]).is_file()
+
+
+@pytest.mark.parametrize("failure", ["sync", "partial"])
+def test_failure_after_apply_rolls_back_settings_config_and_files(desktop, failure, monkeypatch):
+    settings, monitors, original = desktop
+    config = default_config(original)
+    config["border"] = 0.03
+    first, _ = apply_wallpaper(settings, monitors, original, config)
+    saved_json = config_path().read_bytes()
+    config = load_config(first)
+    config["border"] = 0.1
+    sync = None
+    if failure == "sync":
+        attempts = []
+        def sync():
+            attempts.append(True)
+            if len(attempts) == 1:
+                raise OSError("Simulated storage failure after Apply")
+    else:
+        original_apply = settings.apply
+        attempts = []
+        def partial_apply():
+            old_dark = settings.values["picture-uri-dark"]
+            original_apply()
+            if not attempts:
+                settings.values["picture-uri-dark"] = old_dark
+                attempts.append(True)
+        monkeypatch.setattr(settings, "apply", partial_apply)
+    with pytest.raises((OSError, ValueError)):
+        apply_wallpaper(settings, monitors, first, config, sync=sync)
+    assert settings.values == first, "An unsuccessful Apply must restore the previous desktop."
+    assert config_path().read_bytes() == saved_json
+    assert all(path_from_uri(settings.values[key]).is_file()
+               for key in ("picture-uri", "picture-uri-dark"))
+
+
+def test_corrupt_undo_snapshot_is_ignored(desktop):
+    settings, monitors, original = desktop
+    config = default_config(original)
+    config["border"] = 0.03
+    apply_wallpaper(settings, monitors, original, config)
+    config = load_config(settings.values)
+    config["undo"]["config"].pop("generated")
+    save_config(config)
+    assert load_config(settings.values)["undo"] is None
+
+
+def test_failed_rollback_preserves_all_generated_files(desktop):
+    settings, monitors, original = desktop
+    config = default_config(original)
+    config["border"] = 0.03
+    first, _ = apply_wallpaper(settings, monitors, original, config)
+    old_paths = list(generated_dir().glob("*.png"))
+    config = load_config(first)
+    config["border"] = 0.1
+    def failed_sync():
+        raise OSError("Persistent storage failure")
+    with pytest.raises(ValueError, match="image files were kept"):
+        apply_wallpaper(settings, monitors, first, config, sync=failed_sync)
+    assert all(path.is_file() for path in old_paths)
+    assert len(list(generated_dir().glob("*.png"))) == 4
+
+
+@pytest.mark.parametrize("payload", [
+    '{"version":1,"border":' + str(10 ** 400) + '}',
+    '{"version":1,"alignment":[]}',
+    '{"version":1,"images":{"picture-uri":{"one":42}}}',
+    '[' * 2000 + 'null' + ']' * 2000,
+])
+def test_malformed_preferences_do_not_crash_or_replace_sources(desktop, payload):
+    _, _, original = desktop
+    config_path().parent.mkdir(parents=True, exist_ok=True)
+    config_path().write_text(payload)
+    config = load_config(original)
+    assert not config["enabled"]
+    assert config["single"]["picture-uri"] == original["picture-uri"]
+
+
+def test_undo_color_only_does_not_require_the_unused_old_image(desktop, tmp_path):
+    settings, monitors, original = desktop
+    settings.values["picture-options"] = "none"
+    next_image = tmp_path / "next.png"
+    Image.new("RGB", (20, 10), "blue").save(next_image)
+    config = default_config(settings.values)
+    config["single"].update({"picture-options": "zoom", "picture-uri": next_image.as_uri(),
+                             "picture-uri-dark": next_image.as_uri()})
+    config["border"] = 0.03
+    apply_wallpaper(settings, monitors, settings.values, config)
+    path_from_uri(original["picture-uri"]).unlink()
+    restored, _ = undo_last_apply(settings, monitors)
+    assert restored["picture-options"] == "none"
