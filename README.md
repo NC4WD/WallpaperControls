@@ -25,6 +25,31 @@ Requires **Ubuntu 24.04 or newer with GNOME**, or another GNOME system with
 GTK 4.10 and libadwaita 1.4 or newer. Ubuntu 22.04's standard libraries are too
 old. The installer checks these requirements before copying any files.
 
+### Install the Ubuntu package
+
+Download the `.deb` from a GitHub release and install it from the folder where
+you saved it:
+
+```sh
+sudo apt install ./wallpaper-controls_0.2.0-1_all.deb
+```
+
+Ubuntu installs the required libraries. Future updates use the same command
+with the new file; a download from GitHub does not enable automatic updates.
+Choose **Quit** and reopen the app after updating.
+
+If you previously used `./install.sh`, apply or discard your pending edits,
+choose **Quit**, and run `./uninstall.sh` from your source folder first. This
+removes the old user launcher so it cannot hide the system package. Your
+wallpaper images and preferences are kept. Open the packaged app after
+installation to enable its saved monitor-helper preference again.
+
+To remove the package, first turn off **Adjust to monitor changes**, press
+**Apply**, and choose **Quit**, then run `sudo apt remove wallpaper-controls`.
+Removal keeps your wallpaper images and preferences.
+
+### Install from source
+
 Install the system packages:
 
 ```sh

@@ -57,6 +57,7 @@ def sync_autostart(config, script=None):
         script = Path(__file__).resolve().with_name("wallpaper_controls.py")
     text = ("[Desktop Entry]\nType=Application\nName=Wallpaper Controls Display Helper\n"
             "Comment=Keep applied wallpapers aligned when displays change\n"
+            f"TryExec={desktop_string_escape(script)}\n"
             f"Exec={desktop_exec_quote(sys.executable)} {desktop_exec_quote(script)} --watch-displays\n"
             "NoDisplay=true\nOnlyShowIn=GNOME;Unity;\nX-GNOME-Autostart-enabled=true\n")
     path.parent.mkdir(parents=True, exist_ok=True)

@@ -1,7 +1,7 @@
 # AI assistance disclosure
 
 OpenAI Codex assisted in creating and revising the application source, icon,
-tests, installer, documentation, AppStream metadata, and screenshots in this repository.
+tests, installer, Debian packaging, documentation, AppStream metadata, and screenshots in this repository.
 The project owner should review and test these materials before publishing or
 submitting the app to any store.
 

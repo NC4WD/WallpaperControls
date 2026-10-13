@@ -24,6 +24,32 @@ name must remain `WallpaperControls` to match the application ID
 6. Tag the reviewed version and publish a GitHub release. Make sure the
    screenshot URL in AppStream resolves from that tag.
 
+## Build downloadable packages
+
+Commit the reviewed source, then run:
+
+```sh
+/usr/bin/python3 packaging/build.py
+```
+
+The builder requires Git, Python 3, and `dpkg-deb`, and runs without root.
+It creates `dist/wallpaper-controls_0.2.0-1_all.deb`, the matching source archive,
+and `SHA256SUMS`. Both packages come from the same clean commit. The `.deb`
+contains only Python code and assets, so its architecture is `all`; it targets
+Ubuntu 24.04 or newer with GNOME. It installs under `/usr` without modifying
+users' wallpaper settings or personal files during installation.
+
+Use `--revision 2` for a packaging-only update to the same app version and
+`--maintainer 'Name <email@example.com>'` to override the package contact.
+An app update also changes `APP_VERSION`, AppStream, and the changelog.
+Run `lintian dist/*.deb`, validate the packaged desktop files and metadata,
+and test installation, upgrade, launch, and removal in a disposable Ubuntu
+24.04 environment. Publish the `.deb`, matching source archive, and checksums
+together after the physical-display release checks above.
+
+This builds a GitHub download. An Ubuntu repository or PPA would be separate
+work and is needed for automatic updates through Software Updater.
+
 ## Release audit — 2026-10-13
 
 The 0.2.0 candidate received a source, settings, image-rendering, helper,
