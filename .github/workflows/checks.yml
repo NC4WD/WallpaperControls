@@ -13,24 +13,26 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y appstream desktop-file-utils gir1.2-adw-1 \
-            gir1.2-gdkpixbuf-2.0 gir1.2-gtk-4.0 python3-gi python3-pil python3-pytest
+            gir1.2-gdkpixbuf-2.0 gir1.2-gtk-4.0 gsettings-desktop-schemas python3-gi python3-pil python3-pytest xvfb
       - name: Check source and metadata
         run: |
           sh -n install.sh uninstall.sh run.sh
-          /usr/bin/python3 -m py_compile wallpaper_controls.py monitor_wallpaper.py monitor_state.py
-          /usr/bin/python3 -m pytest -q
+          /usr/bin/python3 -m py_compile wallpaper_controls.py monitor_wallpaper.py monitor_state.py wallpaper_backend.py desktop_integration.py
+          xvfb-run -a env GSETTINGS_BACKEND=memory /usr/bin/python3 -m pytest -q
           appstreamcli validate --no-net io.github.nc4wd.WallpaperControls.metainfo.xml
       - name: Check clean user install
         run: |
-          export HOME="$(mktemp -d)"
-          export XDG_DATA_HOME="$HOME/.local/share"
+          export WALLPAPER_CONTROLS_INSTALL_HOME="$(mktemp -d)"
+          export XDG_DATA_HOME="$WALLPAPER_CONTROLS_INSTALL_HOME/.local/share"
+          export XDG_CONFIG_HOME="$WALLPAPER_CONTROLS_INSTALL_HOME/.config"
+          export GSETTINGS_BACKEND=memory
           ./install.sh
           desktop-file-validate "$XDG_DATA_HOME/applications/io.github.nc4wd.WallpaperControls.desktop" \
             "$XDG_DATA_HOME/applications/io.github.nc4wd.WallpaperControls.SetWallpaper.desktop"
           icon="$XDG_DATA_HOME/icons/hicolor/256x256/apps/io.github.nc4wd.WallpaperControls.png"
           test -f "$icon"
           test "$(sed -n 's/^Icon=//p' "$XDG_DATA_HOME/applications/io.github.nc4wd.WallpaperControls.desktop")" = "$icon"
-          "$HOME/.local/bin/wallpaper-controls" --version
+          "$WALLPAPER_CONTROLS_INSTALL_HOME/.local/bin/wallpaper-controls" --version
           ./uninstall.sh
-          test ! -e "$HOME/.local/bin/wallpaper-controls"
+          test ! -e "$WALLPAPER_CONTROLS_INSTALL_HOME/.local/bin/wallpaper-controls"
           test ! -e "$icon"

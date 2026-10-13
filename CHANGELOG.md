@@ -1,5 +1,21 @@
 # Changelog
 
+## 0.2.0 — 2026-10-12
+
+- Added Undo Last Apply, including restoration after reopening the app and retention of the previous generated wallpaper files.
+- Added image alignment for Fill, Fit, Center, and Span with a shared renderer for the preview and final wallpaper.
+- Added Identify Displays with numbered labels that dismiss after five seconds, on click, or with Escape.
+- Added automatic rebuilding of applied wallpapers when displays are connected, removed, scaled, or rearranged. The optional display helper runs in the background and at login; new displays inherit a saved image and disconnected display choices are retained.
+- Added drag and drop onto the preview, image row, or individual monitor rows. Dropped images are staged until Apply; unsupported files and multiple-file drops show a clear error.
+- Preserved pending edits during automatic rebuilds and stopped rebuilding when another app changes the desktop wallpaper.
+- Fixed Center and Tile sizing on scaled displays and added GTK integration checks to continuous integration.
+
+## 0.1.5 — 2026-10-11
+
+- Fixed the single-image preview to use the connected display's actual resolution instead of assuming 1920×1080.
+- Fixed Center previews that showed background color even though a larger image covered the real screen.
+- Automatically select a Medium border when choosing a color that would otherwise be hidden.
+
 ## 0.1.4 — 2026-10-11
 
 - Added Small, Medium, and Large border sizes so the background color remains visible even when an image matches the screen shape.

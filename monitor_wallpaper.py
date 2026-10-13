@@ -5,6 +5,7 @@ from dataclasses import dataclass
 import hashlib
 import json
 import math
+from io import BytesIO
 from pathlib import Path
 from urllib.parse import unquote, urlparse
 
@@ -13,6 +14,12 @@ from PIL import Image, ImageOps, UnidentifiedImageError
 
 MAX_PIXELS = 32_000_000
 PER_MONITOR_PLACEMENTS = ("zoom", "scaled", "stretched", "centered", "wallpaper")
+ALIGNMENTS = {
+    "center": (0.5, 0.5), "top": (0.5, 0.0), "bottom": (0.5, 1.0),
+    "left": (0.0, 0.5), "right": (1.0, 0.5),
+    "top-left": (0.0, 0.0), "top-right": (1.0, 0.0),
+    "bottom-left": (0.0, 1.0), "bottom-right": (1.0, 1.0),
+}
 
 
 @dataclass(frozen=True)
@@ -63,7 +70,7 @@ def bounds(monitors):
     return left, top, right - left, bottom - top
 
 
-def check_layout(monitors):
+def check_layout(monitors, allow_mirrored=False):
     for index, a in enumerate(monitors):
         if a.width <= 0 or a.height <= 0:
             raise ValueError(f"{a.label} has an invalid display size.")
@@ -71,7 +78,25 @@ def check_layout(monitors):
             overlap_x = min(a.x + a.width, b.x + b.width) - max(a.x, b.x)
             overlap_y = min(a.y + a.height, b.y + b.height) - max(a.y, b.y)
             if overlap_x > 0 and overlap_y > 0:
+                if allow_mirrored and (a.x, a.y, a.width, a.height) == (b.x, b.y, b.width, b.height):
+                    continue
                 raise ValueError("Mirrored displays cannot show different wallpapers.")
+
+
+def placement_covers_viewport(image_width, image_height, viewport_width,
+                              viewport_height, placement):
+    """Return whether an opaque image leaves no background color visible."""
+    if min(image_width, image_height, viewport_width, viewport_height) <= 0:
+        return False
+    if placement in ("zoom", "stretched", "spanned"):
+        return True
+    if placement == "scaled":
+        image_ratio = image_width / image_height
+        viewport_ratio = viewport_width / viewport_height
+        return abs(image_ratio - viewport_ratio) / viewport_ratio < 0.01
+    if placement == "centered":
+        return image_width >= viewport_width and image_height >= viewport_height
+    return False
 
 
 def _color_rgb(color):
@@ -97,28 +122,41 @@ def _load_image(uri):
         with Image.open(path) as source:
             return ImageOps.exif_transpose(source).convert("RGBA")
     except (OSError, UnidentifiedImageError) as error:
+        # Keep GTK's SVG image support when using generated wallpapers too.
+        if path.suffix.lower() == ".svg":
+            try:
+                import gi
+                gi.require_version("GdkPixbuf", "2.0")
+                from gi.repository import GdkPixbuf
+                pixbuf = GdkPixbuf.Pixbuf.new_from_file(str(path))
+                _success, data = pixbuf.save_to_bufferv("png", [], [])
+                with Image.open(BytesIO(data)) as source:
+                    return source.convert("RGBA")
+            except Exception as svg_error:
+                raise ValueError(f"Cannot open {path.name}: {svg_error}") from svg_error
         raise ValueError(f"Cannot open {path.name}: {error}") from error
 
 
-def _place_image(canvas, source, rectangle, placement, scale):
+def _place_image(canvas, source, rectangle, placement, scale, alignment="center"):
     x, y, width, height = rectangle
+    ax, ay = ALIGNMENTS[alignment]
     if placement == "stretched":
         canvas.alpha_composite(source.resize((width, height), Image.Resampling.LANCZOS), (x, y))
     elif placement == "scaled":
         image = ImageOps.contain(source, (width, height), Image.Resampling.LANCZOS)
-        canvas.alpha_composite(image, (x + (width - image.width) // 2,
-                                       y + (height - image.height) // 2))
+        canvas.alpha_composite(image, (x + round((width - image.width) * ax),
+                                       y + round((height - image.height) * ay)))
     elif placement == "centered":
         size = (max(1, round(source.width * scale)), max(1, round(source.height * scale)))
         image = source.resize(size, Image.Resampling.LANCZOS)
         # Clip oversized centered images to this monitor's rectangle.
-        crop_left = max(0, (image.width - width) // 2)
-        crop_top = max(0, (image.height - height) // 2)
+        crop_left = max(0, round((image.width - width) * ax))
+        crop_top = max(0, round((image.height - height) * ay))
         image = image.crop((crop_left, crop_top,
                             min(image.width, crop_left + width),
                             min(image.height, crop_top + height)))
-        canvas.alpha_composite(image, (x + (width - image.width) // 2,
-                                       y + (height - image.height) // 2))
+        canvas.alpha_composite(image, (x + round((width - image.width) * ax),
+                                       y + round((height - image.height) * ay)))
     elif placement == "wallpaper":
         size = (max(1, round(source.width * scale)), max(1, round(source.height * scale)))
         image = source.resize(size, Image.Resampling.LANCZOS)
@@ -128,17 +166,20 @@ def _place_image(canvas, source, rectangle, placement, scale):
                                     min(image.height, y + height - tile_y)))
                 canvas.alpha_composite(piece, (tile_x, tile_y))
     else:  # zoom / Fill Screen
-        image = ImageOps.fit(source, (width, height), Image.Resampling.LANCZOS)
+        image = ImageOps.fit(source, (width, height), Image.Resampling.LANCZOS,
+                            centering=(ax, ay))
         canvas.alpha_composite(image, (x, y))
 
 
 def render_composite(monitors, image_uris, placement, color, scale=None,
-                     allow_missing=False, border=0.0):
+                     allow_missing=False, border=0.0, alignment="center", allow_mirrored=False):
     """Return a Pillow RGBA image matching the joined display layout."""
-    check_layout(monitors)
+    check_layout(monitors, allow_mirrored=allow_mirrored)
     left, top, logical_width, logical_height = bounds(monitors)
     if placement not in (*PER_MONITOR_PLACEMENTS, "spanned"):
         raise ValueError("Choose a placement for the images on each monitor.")
+    if alignment not in ALIGNMENTS:
+        raise ValueError("Choose a valid image alignment.")
     if scale is None:
         scale = max(m.scale for m in monitors)
     if not math.isfinite(scale) or scale <= 0:
@@ -157,7 +198,7 @@ def render_composite(monitors, image_uris, placement, color, scale=None,
         inset = round(min(width, height) * border)
         rectangle = (inset, inset, max(1, width - inset * 2),
                      max(1, height - inset * 2))
-        _place_image(canvas, _load_image(uri), rectangle, "zoom", scale)
+        _place_image(canvas, _load_image(uri), rectangle, "zoom", scale, alignment)
         return canvas
     for monitor in monitors:
         uri = image_uris.get(monitor.connector)
@@ -175,5 +216,8 @@ def render_composite(monitors, image_uris, placement, color, scale=None,
         rectangle = (x + inset, y + inset,
                      max(1, monitor_width - inset * 2),
                      max(1, monitor_height - inset * 2))
-        _place_image(canvas, _load_image(uri), rectangle, placement, scale)
+        # Natural image pixels must retain their size on HiDPI monitors,
+        # including when rendering a reduced preview of the same layout.
+        _place_image(canvas, _load_image(uri), rectangle, placement,
+                     scale / monitor.scale, alignment)
     return canvas

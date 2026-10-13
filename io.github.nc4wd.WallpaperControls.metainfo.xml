@@ -8,7 +8,7 @@
   <description>
     <p>Wallpaper Controls brings image placement choices back to a simple desktop window. Preview Fill, Fit, Stretch, Center, Tile, and Span Displays before applying a wallpaper.</p>
     <p>Choose separate images for light and dark appearance, set a background color and visible border size, and give each connected monitor its own image. The app combines monitor images into one wallpaper that GNOME can display across the desktop.</p>
-    <p>Edits remain in the preview until you press Apply. Revert discards pending changes.</p>
+    <p>Edits remain in the preview until you press Apply. Revert discards pending changes and Undo Last Apply restores the previous wallpaper. Choose image alignment, drop an image from Files, identify displays, and automatically rebuild applied wallpapers when your display arrangement changes.</p>
   </description>
   <developer id="io.github.nc4wd">
     <name>NC4WD</name>
@@ -19,10 +19,24 @@
   <screenshots>
     <screenshot type="default">
       <caption>Preview a wallpaper before applying it</caption>
-      <image type="source">https://raw.githubusercontent.com/NC4WD/WallpaperControls/v0.1.4/assets/screenshots/main.png</image>
+      <image type="source">https://raw.githubusercontent.com/NC4WD/WallpaperControls/v0.2.0/assets/screenshots/main.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Choose alignment, borders, and automatic display rebuilding</caption>
+      <image type="source">https://raw.githubusercontent.com/NC4WD/WallpaperControls/v0.2.0/assets/screenshots/controls.png</image>
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.2.0" date="2026-10-12">
+      <description>
+        <p>Add Undo Last Apply, image alignment, display identification, automatic display rebuilding, and drag and drop.</p>
+      </description>
+    </release>
+    <release version="0.1.5" date="2026-10-11">
+      <description>
+        <p>Use the actual display size for previews and automatically expose a selected background color when the image covers the display.</p>
+      </description>
+    </release>
     <release version="0.1.4" date="2026-10-11">
       <description>
         <p>Add adjustable visible borders so the selected background color can always appear around the wallpaper.</p>

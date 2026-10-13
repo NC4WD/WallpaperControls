@@ -24,7 +24,7 @@ except (ImportError, ValueError) as error:
     )
 
 source = Path(os.environ["WALLPAPER_CONTROLS_SOURCE_DIR"])
-home = Path.home()
+home = Path(os.environ.get("WALLPAPER_CONTROLS_INSTALL_HOME", Path.home()))
 data = Path(os.environ.get("XDG_DATA_HOME", home / ".local/share"))
 app = data / "wallpaper-controls"
 bin_dir = home / ".local/bin"
@@ -36,7 +36,8 @@ for directory in (app, bin_dir, desktop_dir, icon_dir, png_icon_dir, metainfo_di
     directory.mkdir(parents=True, exist_ok=True)
 
 app_id = "io.github.nc4wd.WallpaperControls"
-for filename in ("wallpaper_controls.py", "monitor_wallpaper.py", "monitor_state.py", "LICENSE"):
+for filename in ("wallpaper_controls.py", "monitor_wallpaper.py", "monitor_state.py",
+                 "wallpaper_backend.py", "desktop_integration.py", "LICENSE"):
     shutil.copy2(source / filename, app / filename)
 shutil.copy2(source / f"{app_id}.svg", icon_dir / f"{app_id}.svg")
 png_icon = png_icon_dir / f"{app_id}.png"
@@ -76,4 +77,11 @@ if shutil.which("update-desktop-database"):
     subprocess.run(["update-desktop-database", str(desktop_dir)], check=True)
 print("Wallpaper Controls installed. Open it from your app launcher.")
 print("In Files, choose Open With → Set as Wallpaper, then press Apply.")
+sys.path.insert(0, str(app))
+from desktop_integration import sync_autostart
+from monitor_state import EDITABLE_KEYS, load_config
+from gi.repository import Gio
+settings = Gio.Settings.new("org.gnome.desktop.background")
+sync_autostart(load_config({key: settings.get_string(key) for key in EDITABLE_KEYS}),
+               script=app / "wallpaper_controls.py")
 PY

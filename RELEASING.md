@@ -13,6 +13,10 @@ name must remain `WallpaperControls` to match the application ID
 3. Test `./install.sh`, the app window, the Files action, and `./uninstall.sh`
    on a clean GNOME user account. Test the per-monitor result with two physical
    displays, including a Light/Dark switch and a changed display layout.
+   Verify numbered labels appear on the intended physical displays and the
+   helper rebuilds after closing the window and after logging in. The test
+   suite covers simulated display layouts and cannot replace these physical
+   display checks. Verify Undo restores both appearances and the chosen color.
 4. Push the reviewed source to the public GitHub repository.
 5. Review the real app screenshot in `assets/screenshots/` and update its
    AppStream URL to point to the release tag.
