@@ -104,6 +104,10 @@ def main():
         manual.parent.mkdir(parents=True)
         compress(manual, (ROOT / "packaging/wallpaper-controls.1").read_text().replace(
             "@VERSION@", version).encode(), 0)
+        write(package / "usr/share/lintian/overrides/wallpaper-controls",
+              "# Distributed on GitHub, not uploaded to the Debian archive.\n"
+              "# There is no Debian Intent To Package bug to close.\n"
+              "wallpaper-controls: initial-upload-closes-no-bugs\n")
         write(docs / "copyright", (
             "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n"
             "Upstream-Name: Wallpaper Controls\n"
