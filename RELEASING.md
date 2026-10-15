@@ -47,7 +47,8 @@ An app update also changes `APP_VERSION`, AppStream, and the changelog.
 Run `lintian dist/*.deb`, validate the packaged desktop files and metadata,
 and test installation, upgrade, launch, and removal in a disposable Ubuntu
 24.04 environment. Publish the `.deb`, matching source archive, and checksums
-together after the physical-display release checks above.
+together after the physical-display release checks above, or an explicit
+maintainer waiver recorded in the release notes.
 
 This builds a GitHub download. An Ubuntu repository or PPA would be separate
 work and is needed for automatic updates through Software Updater.
@@ -76,15 +77,22 @@ The suites report desktop-library deprecation warnings, with no failed tests.
 These APIs remain compatible with the minimum supported libraries. Physical
 monitor and login checks remain outstanding.
 
-**Still required before publication:** test two physical monitors in a real
+**Physical-display validation (outstanding for 0.2.0):** test two physical monitors in a real
 GNOME session. Cover different light/dark images, Apply and Restore Previous
 Wallpaper, monitor numbers, mixed display scales, unplug/replug, rearrangement,
 the helper after closing the window, and helper startup after login. Also check
 the Files action and keyboard navigation in that session. Automated tests do
 not establish the real compositor result or login behavior.
 
-The v0.2.0 screenshot URLs will only resolve after the reviewed candidate has
-been pushed and tagged. No release or Flathub submission is part of this audit.
+On 2026-10-14 the maintainer explicitly authorized publishing 0.2.0 without
+the physical two-monitor test. The release notes disclose that this test was
+skipped. This waiver does not mark physical-display or login validation as
+passed. The final automated suite passed all 65 checks on Ubuntu 24.04 and
+26.04; package installation, upgrade, removal, preference retention, and the
+installed app's Apply/Undo and login-helper removal behavior were also checked.
+
+The v0.2.0 screenshot URLs point to the release tag. This GitHub release does
+not include a Flathub submission.
 
 ## Flathub status
 

@@ -27,7 +27,7 @@ old. The installer checks these requirements before copying any files.
 
 ### Install the Ubuntu package
 
-Download the `.deb` from a GitHub release and install it from the folder where
+Download the `.deb` from the [latest GitHub release](https://github.com/NC4WD/WallpaperControls/releases/latest) and install it from the folder where
 you saved it:
 
 ```sh

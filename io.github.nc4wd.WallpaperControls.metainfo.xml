@@ -27,7 +27,7 @@
     </screenshot>
   </screenshots>
   <releases>
-    <release version="0.2.0" date="2026-10-13">
+    <release version="0.2.0" date="2026-10-14">
       <description>
         <p>Add Restore Previous Wallpaper, image position, monitor numbers, automatic monitor adjustments, drag and drop, and color-only backgrounds. Improve save recovery, image handling, and installation checks.</p>
       </description>
