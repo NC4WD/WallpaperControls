@@ -1,6 +1,6 @@
 # Changelog
 
-## 0.2.1 — Unreleased
+## 0.2.1 — 2026-10-14
 
 - Renamed the app, launcher, About window, and catalog display name to Wallpaper-Controls.
 - Explicitly declared the existing app icon in AppStream metadata. Ubuntu App Center's local `.deb` installer still uses its own generic image and lowercase package identifier.

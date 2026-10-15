@@ -24,11 +24,11 @@
   <screenshots>
     <screenshot type="default">
       <caption>Preview a wallpaper before applying it</caption>
-      <image type="source">https://raw.githubusercontent.com/NC4WD/WallpaperControls/v0.2.0/assets/screenshots/main.png</image>
+      <image type="source">https://raw.githubusercontent.com/NC4WD/WallpaperControls/v0.2.1/assets/screenshots/main.png</image>
     </screenshot>
     <screenshot>
       <caption>Choose alignment, borders, and automatic display rebuilding</caption>
-      <image type="source">https://raw.githubusercontent.com/NC4WD/WallpaperControls/v0.2.0/assets/screenshots/controls.png</image>
+      <image type="source">https://raw.githubusercontent.com/NC4WD/WallpaperControls/v0.2.1/assets/screenshots/controls.png</image>
     </screenshot>
   </screenshots>
   <releases>

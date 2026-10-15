@@ -1,4 +1,4 @@
-# Releasing Wallpaper Controls
+# Releasing Wallpaper-Controls
 
 The intended public repository is
 [`NC4WD/WallpaperControls`](https://github.com/NC4WD/WallpaperControls). Its
@@ -35,7 +35,7 @@ Commit the reviewed source, then run:
 The builder requires Git, Python 3, and `dpkg-deb`, and runs without root.
 Build in a Git checkout. To rebuild from an extracted source archive,
 initialize a Git repository there and commit its files first.
-It creates `dist/wallpaper-controls_0.2.0-1_all.deb`, the matching source archive,
+It creates `dist/wallpaper-controls_0.2.1-1_all.deb`, the matching source archive,
 and `SHA256SUMS`. Both packages come from the same clean commit. The `.deb`
 contains only Python code and assets, so its architecture is `all`; it targets
 Ubuntu 24.04 or newer with GNOME. It installs under `/usr` without modifying
