@@ -1,10 +1,10 @@
-# Wallpaper Controls
+# Wallpaper-Controls
 
-Wallpaper Controls is a small GTK4/libadwaita app for Ubuntu and other GNOME
+Wallpaper-Controls is a small GTK4/libadwaita app for Ubuntu and other GNOME
 desktops. It restores the wallpaper placement choices missing from recent
 settings panels and shows a preview before anything changes.
 
-![Wallpaper Controls preview and Apply button](assets/screenshots/main.png)
+![Wallpaper-Controls preview and Apply button](assets/screenshots/main.png)
 
 ## Features
 
@@ -31,12 +31,17 @@ Download the `.deb` from the [latest GitHub release](https://github.com/NC4WD/Wa
 you saved it:
 
 ```sh
-sudo apt install ./wallpaper-controls_0.2.0-1_all.deb
+sudo apt install ./wallpaper-controls_0.2.1-1_all.deb
 ```
 
 Ubuntu installs the required libraries. Future updates use the same command
 with the new file; a download from GitHub does not enable automatic updates.
 Choose **Quit** and reopen the app after updating.
+
+The app includes PNG and SVG icons and AppStream metadata. Ubuntu App Center's
+screen for a downloaded `.deb` currently displays a generic picture and the
+lowercase package identifier, rather than the app's icon and display name.
+Installing the app provides its own icon and **Wallpaper-Controls** launcher.
 
 If you previously used `./install.sh`, apply or discard your pending edits,
 choose **Quit**, and run `./uninstall.sh` from your source folder first. This
@@ -62,7 +67,7 @@ From this folder, run:
 ./install.sh
 ```
 
-Find **Wallpaper Controls** in the app launcher. The installer works in your
+Find **Wallpaper-Controls** in the app launcher. The installer works in your
 user account and does not require `sudo`. You can also run `./run.sh` without
 installing. To remove the app, run `./uninstall.sh`; it keeps your wallpaper
 images and preferences so your current desktop image does not disappear.
@@ -117,7 +122,7 @@ switch off and press **Apply** to stop the helper and remove its login entry.
 New displays inherit a saved image; images for unplugged displays are kept for
 their return. Pending image or color edits are never applied by the helper.
 
-The file-manager action opens Wallpaper Controls with the selected image staged
+The file-manager action opens Wallpaper-Controls with the selected image staged
 for both modes. You still need to press **Apply**.
 
 ## Where files go

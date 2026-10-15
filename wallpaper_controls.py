@@ -27,7 +27,7 @@ from runtime_requirements import check_schemas, check_versions
 
 
 APP_ID = "io.github.nc4wd.WallpaperControls"
-APP_VERSION = "0.2.0"
+APP_VERSION = "0.2.1"
 PROJECT_URL = "https://github.com/NC4WD/WallpaperControls"
 BACKGROUND_SCHEMA = "org.gnome.desktop.background"
 PLACEMENTS = (
@@ -182,7 +182,7 @@ class WallpaperPreview(Gtk.DrawingArea):
 
 class WallpaperWindow(Adw.ApplicationWindow):
     def __init__(self, app):
-        super().__init__(application=app, title="Wallpaper Controls")
+        super().__init__(application=app, title="Wallpaper-Controls")
         display = Gdk.Display.get_default()
         monitor_model = display.get_monitors()
         geometries = [monitor_model.get_item(index).get_geometry()
@@ -239,7 +239,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
         identify_action.connect("activate", self.on_identify)
         self.add_action(identify_action)
         about_button = Gtk.Button.new_from_icon_name("help-about-symbolic")
-        about_button.set_tooltip_text("About Wallpaper Controls")
+        about_button.set_tooltip_text("About Wallpaper-Controls")
         about_button.connect("clicked", self.on_about)
         header.pack_end(about_button)
         toolbar.add_top_bar(header)
@@ -873,7 +873,7 @@ class WallpaperWindow(Adw.ApplicationWindow):
         about = Adw.AboutWindow(
             transient_for=self,
             modal=True,
-            application_name="Wallpaper Controls",
+            application_name="Wallpaper-Controls",
             application_icon=APP_ID,
             developer_name="NC4WD",
             version=APP_VERSION,
@@ -1040,7 +1040,7 @@ class WallpaperApp(Adw.Application):
             if window:
                 window.show_error(f"Couldn't adjust the wallpaper for your monitors. {error}")
             else:
-                print(f"Wallpaper Controls: {error}", file=sys.stderr)
+                print(f"Wallpaper-Controls: {error}", file=sys.stderr)
         finally:
             self.updating_wallpaper = False
         return GLib.SOURCE_REMOVE
@@ -1114,7 +1114,7 @@ class WallpaperApp(Adw.Application):
             self.update_background_lifetime()
             return 0
         if len(args) == 2 and args[1] in ("--version", "-V"):
-            command_line.print_literal(f"Wallpaper Controls {APP_VERSION}\n")
+            command_line.print_literal(f"Wallpaper-Controls {APP_VERSION}\n")
             return 0
         if len(args) == 2 and args[1] in ("--help", "-h"):
             command_line.print_literal(
@@ -1146,7 +1146,7 @@ def main(argv=None):
         stop_running_app()
         return 0
     if len(arguments) == 2 and arguments[1] in ("--version", "-V"):
-        print(f"Wallpaper Controls {APP_VERSION}")
+        print(f"Wallpaper-Controls {APP_VERSION}")
         return 0
     if len(arguments) == 2 and arguments[1] in ("--help", "-h"):
         print("Usage: wallpaper-controls [--set-wallpaper IMAGE] [--show-background-color]")
@@ -1164,7 +1164,7 @@ def main(argv=None):
         check_schemas(Gio.SettingsSchemaSource.get_default())
         gi.require_foreign("cairo")
     except (ImportError, ValueError) as error:
-        print(f"Wallpaper Controls: {error}", file=sys.stderr)
+        print(f"Wallpaper-Controls: {error}", file=sys.stderr)
         return 1
     return WallpaperApp().run(arguments)
 

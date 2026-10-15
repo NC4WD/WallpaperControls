@@ -78,7 +78,7 @@ for path in (
 
 if shutil.which("update-desktop-database"):
     subprocess.run(["update-desktop-database", str(desktop_dir)], check=True)
-print("Wallpaper Controls installed. Open it from your app launcher.")
+print("Wallpaper-Controls installed. Open it from your app launcher.")
 print("In Files, choose Open With → Set as Wallpaper, then press Apply.")
 print("If the app is already running, choose Quit from its menu, then reopen it to load the update.")
 sys.path.insert(0, str(app))

@@ -3,7 +3,7 @@
   <id>io.github.nc4wd.WallpaperControls</id>
   <metadata_license>CC0-1.0</metadata_license>
   <project_license>GPL-3.0-or-later</project_license>
-  <name>Wallpaper Controls</name>
+  <name>Wallpaper-Controls</name>
   <summary>Choose how wallpapers appear on GNOME desktops</summary>
   <description>
     <p>Choose how your wallpaper fits the screen: fill it, show the whole image, stretch it, keep its original size, tile it, or spread it across your monitors. Preview changes before pressing Apply.</p>
@@ -14,6 +14,11 @@
     <name>NC4WD</name>
   </developer>
   <launchable type="desktop-id">io.github.nc4wd.WallpaperControls.desktop</launchable>
+  <icon type="stock">io.github.nc4wd.WallpaperControls</icon>
+  <categories>
+    <category>Settings</category>
+    <category>DesktopSettings</category>
+  </categories>
   <url type="homepage">https://github.com/NC4WD/WallpaperControls</url>
   <url type="bugtracker">https://github.com/NC4WD/WallpaperControls/issues</url>
   <screenshots>
@@ -27,6 +32,11 @@
     </screenshot>
   </screenshots>
   <releases>
+    <release version="0.2.1" date="2026-10-14">
+      <description>
+        <p>Rename the app to Wallpaper-Controls and explicitly declare its existing app icon in the catalog metadata.</p>
+      </description>
+    </release>
     <release version="0.2.0" date="2026-10-14">
       <description>
         <p>Add Restore Previous Wallpaper, image position, monitor numbers, automatic monitor adjustments, drag and drop, and color-only backgrounds. Improve save recovery, image handling, and installation checks.</p>

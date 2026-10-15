@@ -33,5 +33,5 @@ for path in paths:
     path.unlink(missing_ok=True)
 if shutil.which("update-desktop-database") and desktop_dir.exists():
     subprocess.run(["update-desktop-database", str(desktop_dir)], check=True)
-print("Wallpaper Controls removed. Wallpaper images and preferences were kept.")
+print("Wallpaper-Controls removed. Wallpaper images and preferences were kept.")
 PY

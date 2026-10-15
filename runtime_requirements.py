@@ -5,7 +5,7 @@
 def check_versions(gtk_version, adw_version):
     if tuple(gtk_version) < (4, 10) or tuple(adw_version) < (1, 4):
         raise ValueError(
-            "Wallpaper Controls needs GTK 4.10 and libadwaita 1.4 or newer. "
+            "Wallpaper-Controls needs GTK 4.10 and libadwaita 1.4 or newer. "
             "Use Ubuntu 24.04 or newer with the GNOME desktop.")
 
 

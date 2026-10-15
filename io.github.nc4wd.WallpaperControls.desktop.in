@@ -1,6 +1,6 @@
 [Desktop Entry]
 Type=Application
-Name=Wallpaper Controls
+Name=Wallpaper-Controls
 Comment=Choose wallpaper images, sizing, and monitor layouts
 Exec=@EXEC@
 Icon=io.github.nc4wd.WallpaperControls

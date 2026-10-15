@@ -110,7 +110,7 @@ def main():
               "wallpaper-controls: initial-upload-closes-no-bugs\n")
         write(docs / "copyright", (
             "Format: https://www.debian.org/doc/packaging-manuals/copyright-format/1.0/\n"
-            "Upstream-Name: Wallpaper Controls\n"
+            "Upstream-Name: Wallpaper-Controls\n"
             "Source: https://github.com/NC4WD/WallpaperControls\n\n"
             "Files: *\nCopyright: 2026 NC4WD\nLicense: GPL-3+\n"
             " This program is free software: you may redistribute it and/or modify it\n"
